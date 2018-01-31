@@ -1,26 +1,33 @@
-use cortexm3::nvic;
+use cortexm3::{self, nvic};
 use gpio;
 use kernel;
 use peripheral_interrupts::*;
 
-pub struct Cc2650(());
+pub struct Cc2650 {
+    mpu: (),
+    systick: cortexm3::systick::SysTick,
+}
 
 impl Cc2650 {
     pub unsafe fn new() -> Cc2650 {
-        Cc2650(())
+        Cc2650 {
+            mpu: (),
+            // The systick clocks with 48MHz by default
+            systick: cortexm3::systick::SysTick::new_with_calibration(48 * 1000000),
+        }
     }
 }
 
 impl kernel::Chip for Cc2650 {
     type MPU = ();
-    type SysTick = ();
+    type SysTick = cortexm3::systick::SysTick;
 
     fn mpu(&self) -> &Self::MPU {
-        &self.0
+        &self.mpu
     }
 
     fn systick(&self) -> &Self::SysTick {
-        &self.0
+        &self.systick
     }
 
     fn service_pending_interrupts(&mut self) {
