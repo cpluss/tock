@@ -121,7 +121,7 @@ impl UART {
 
         // Set the baud rate
         UART().ibrd.set(div / 64);
-        UART().fbrd.set(div & 64);
+        UART().fbrd.set(div % 64);
 
         // Set word length
         UART().lcrh.set(UART_CONF_WLEN_8);

@@ -8,8 +8,8 @@ pub const IOC_IE: u8 = 29;
 pub const IOC_EDGE_DET: u8 = 16;
 pub const IOC_EDGE_IRQ_EN: u8 = 18;
 
-pub const IOC_UART0_RX: u32 = 0xF;
-pub const IOC_UART0_TX: u32 = 0x10;
+pub const IOC_UART0_RX_ID: u32 = 0xF;
+pub const IOC_UART0_TX_ID: u32 = 0x10;
 
 #[repr(C)]
 struct IOC {
@@ -43,7 +43,7 @@ impl IocfgPin {
     pub fn enable_uart_rx(&self) {
         let pin_ioc = &IOC().iocfg[self.pin];
 
-        pin_ioc.set(pin_ioc.get() | IOC_UART0_RX);
+        pin_ioc.set(pin_ioc.get() | IOC_UART0_RX_ID);
         self.set_input_mode(hil::gpio::InputMode::PullNone);
         self.enable_input();
     }
@@ -51,7 +51,7 @@ impl IocfgPin {
     pub fn enable_uart_tx(&self) {
         let pin_ioc = &IOC().iocfg[self.pin];
 
-        pin_ioc.set(pin_ioc.get() | IOC_UART0_TX);
+        pin_ioc.set(pin_ioc.get() | IOC_UART0_TX_ID);
         self.set_input_mode(hil::gpio::InputMode::PullNone);
         self.enable_output();
     }

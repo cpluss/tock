@@ -147,6 +147,11 @@ pub unsafe fn reset_handler() {
         pin.set_client(gpio);
     }
 
+    cc2650::uart::UART0.enable();
+    cc2650::uart::UART0.put_char('F' as u8);
+
+    loop { }
+
     let sensortag = Platform { gpio, led, button };
 
     let mut chip = cc2650::chip::Cc2650::new();
