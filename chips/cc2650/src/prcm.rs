@@ -100,6 +100,8 @@ impl Clock {
     }
     pub fn enable_uart_run() {
         PRCM().uart_clk_gate_run.set(1);
+        PRCM().uart_clk_gate_sleep.set(1);
+        PRCM().uart_clk_gate_deep_sleep.set(1);
 
         prcm_commit();
     }
