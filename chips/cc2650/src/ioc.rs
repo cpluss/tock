@@ -8,6 +8,9 @@ pub const IOC_IE: u8 = 29;
 pub const IOC_EDGE_DET: u8 = 16;
 pub const IOC_EDGE_IRQ_EN: u8 = 18;
 
+pub const IOC_UART0_RX: u32 = 0xF;
+pub const IOC_UART0_TX: u32 = 0x10;
+
 #[repr(C)]
 struct IOC {
     iocfg: [VolatileCell<u32>; 32],
@@ -25,7 +28,7 @@ pub struct IocfgPin {
 }
 
 impl IocfgPin {
-    const fn new(pin: u8) -> IocfgPin {
+    pub const fn new(pin: u8) -> IocfgPin {
         IocfgPin { pin: pin as usize }
     }
 
@@ -35,6 +38,22 @@ impl IocfgPin {
         // In order to configure the pin for GPIO we need to clear
         // the lower 6 bits.
         pin_ioc.set(pin_ioc.get() & !0x3F);
+    }
+
+    pub fn enable_uart_rx(&self) {
+        let pin_ioc = &IOC().iocfg[self.pin];
+
+        pin_ioc.set(pin_ioc.get() | IOC_UART0_RX);
+        self.set_input_mode(hil::gpio::InputMode::PullNone);
+        self.enable_input();
+    }
+
+    pub fn enable_uart_tx(&self) {
+        let pin_ioc = &IOC().iocfg[self.pin];
+
+        pin_ioc.set(pin_ioc.get() | IOC_UART0_TX);
+        self.set_input_mode(hil::gpio::InputMode::PullNone);
+        self.enable_output();
     }
 
     pub fn set_input_mode(&self, mode: hil::gpio::InputMode) {
