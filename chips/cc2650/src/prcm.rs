@@ -17,7 +17,13 @@ struct PRCM {
     pub gpio_clk_gate_sleep: VolatileCell<u32>,
     pub gpio_clk_gate_deep_sleep: VolatileCell<u32>,
 
-    _reserved2: [VolatileCell<u8>; 0xD8],
+    _reserved3: [VolatileCell<u8>; 0x18],
+
+    pub uart_clk_gate_run: VolatileCell<u32>,
+    pub uart_clk_gate_sleep: VolatileCell<u32>,
+    pub uart_clk_gate_deep_sleep: VolatileCell<u32>,
+
+    _reserved4: [VolatileCell<u8>; 0xB4],
 
     // Power domain control 0
     pub pd_ctl0: VolatileCell<u32>,
@@ -25,7 +31,7 @@ struct PRCM {
     pub pd_ctl0_serial: VolatileCell<u32>,
     pub pd_ctl0_peripheral: VolatileCell<u32>,
 
-    _reserved3: [VolatileCell<u8>; 0x04],
+    _reserved5: [VolatileCell<u8>; 0x04],
 
     // Power domain status 0
     pub pd_stat0: VolatileCell<u32>,
@@ -63,6 +69,9 @@ impl Power {
         match domain {
             PowerDomain::Peripherals => {
                 PRCM().pd_ctl0.set(PRCM().pd_ctl0.get() | 0x4);
+            },
+            PowerDomain::Serial => {
+                PRCM().pd_ctl0.set(PRCM().pd_ctl0.get() | 0x2);
             }
             _ => {
                 panic!("Tried to turn on a power domain not yet specified!");
@@ -73,6 +82,7 @@ impl Power {
     pub fn is_enabled(domain: PowerDomain) -> bool {
         match domain {
             PowerDomain::Peripherals => (PRCM().pd_stat0_periph.get() & 1) >= 1,
+            PowerDomain::Serial => (PRCM().pd_stat0_serial.get() & 1) >= 1,
             _ => false,
         }
     }
@@ -85,6 +95,11 @@ impl Clock {
         PRCM().gpio_clk_gate_run.set(1);
         PRCM().gpio_clk_gate_sleep.set(1);
         PRCM().gpio_clk_gate_deep_sleep.set(1);
+
+        prcm_commit();
+    }
+    pub fn enable_uart_run() {
+        PRCM().uart_clk_gate_run.set(1);
 
         prcm_commit();
     }
