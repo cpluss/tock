@@ -10,7 +10,7 @@ use gpio;
 use peripheral_interrupts;
 use cortexm3::nvic;
 
-pub const UART_CTL_UARTEN: u32 = 0;
+pub const UART_CTL_UARTEN: u32 = 1;
 pub const UART_CTL_TXE: u32 = 1 << 8;
 pub const UART_CTL_RXE: u32 = 1 << 9;
 pub const UART_LCRH_FEN: u32 = 1 << 4;
