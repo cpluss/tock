@@ -1,11 +1,10 @@
 use core::cell::Cell;
 use kernel::common::VolatileCell;
-use kernel::common::take_cell::TakeCell;
 use kernel::hil::gpio::Pin;
 use kernel::hil::uart;
 use kernel;
 use prcm;
-use ioc::IocfgPin;
+use ioc;
 use gpio;
 use peripheral_interrupts;
 use cortexm3::nvic;
@@ -15,18 +14,17 @@ pub const UART_CTL_TXE: u32 = 1 << 8;
 pub const UART_CTL_RXE: u32 = 1 << 9;
 pub const UART_LCRH_FEN: u32 = 1 << 4;
 pub const UART_FR_BUSY: u32 = 1 << 3;
-pub const UART_INTERRUPT_ALL: u32 = 0x7F2;
-pub const UART_FIFO_TX7_8: u32 = 0x04; // Transmit interrupt at 7/8 Full
-pub const UART_FIFO_RX4_8: u32 = 0x10; // Receive interrupt at 1/2 Full
-pub const UART_FR_TXFF: u32 = 0x20;
-
-pub const UART_CONF_BAUD_RATE: u32 = 115200;
-pub const UART_CONF_WLEN_8: u32 = 0x60;
+pub const UART_INT_ALL: u32 = 0x7F2;
 pub const UART_INT_RX: u32 = 0x010;
-pub const UART_INT_RT: u32 = 0x040; // Receive Timeout Interrupt Mask
+pub const UART_INT_RT: u32 = 0x040;
+pub const UART_FIFO_TX7_8: u32 = 0x04;          // Transmit interrupt at 7/8 Full
+pub const UART_FIFO_RX4_8: u32 = 0x10;          // Receive interrupt at 1/2 Full
+pub const UART_FR_TXFF: u32 = 0x20;
+pub const UART_CONF_WLEN_8: u32 = 0x60;
+pub const UART_CONF_BAUD_RATE: u32 = 115200;
 
-pub const BOARD_IOID_UART_RX: u8 = 28;
-pub const BOARD_IOID_UART_TX: u8 = 29;
+pub const BOARD_IO_UART_RX: usize = 28;
+pub const BOARD_IO_UART_TX: usize = 29;
 
 pub const MCU_CLOCK: u32 = 48_000_000;
 
@@ -67,28 +65,7 @@ impl UART {
         }
     }
 
-    pub fn enable(&self) {
-        self.power_and_clock();
-        self.disable();
-        self.disable_interrupts();
-        self.configure();
-        self.enable_interrupts();
-    }
-
-    pub fn disable(&self) {
-        self.fifo_disable();
-        UART().ctl.set(UART().ctl.get() & !(UART_CTL_RXE | UART_CTL_TXE | UART_CTL_UARTEN));
-    }
-
-    fn fifo_enable(&self) {
-        UART().lcrh.set(UART().lcrh.get() | UART_LCRH_FEN);
-    }
-
-    fn fifo_disable(&self) {
-        UART().lcrh.set(UART().lcrh.get() & !UART_LCRH_FEN);
-    }
-
-    pub fn configure(&self) {
+    pub fn configure(&self, params: kernel::hil::uart::UARTParams) {
         let ctl_val = UART_CTL_UARTEN | UART_CTL_TXE | UART_CTL_RXE;
 
         /*
@@ -96,26 +73,18 @@ impl UART {
         * to avoid falling edge glitches
         */
         unsafe {
-            let tx_pin = &gpio::PORT[BOARD_IOID_UART_TX as usize];
-            tx_pin.make_output();
-            tx_pin.set();
+            gpio::PORT[BOARD_IOID_UART_TX].make_output();
+            gpio::PORT[BOARD_IOID_UART_TX].set();
         }
 
         // Map UART signals to IO pin
-        let tx_pin: IocfgPin = IocfgPin::new(BOARD_IOID_UART_TX);
-        tx_pin.enable_uart_tx();
-        let rx_pin: IocfgPin = IocfgPin::new(BOARD_IOID_UART_RX);
-        rx_pin.enable_uart_rx();
+        ioc::IOCFG[BOARD_IOID_UART_TX].enable_uart_tx();
+        ioc::IOCFG[BOARD_IOID_UART_RX].enable_uart_rx();
 
         // Disable the UART before configuring
         self.disable();
 
-        // Fractional baud rate divider
-        let div = (((MCU_CLOCK * 8) / UART_CONF_BAUD_RATE) + 1) / 2;
-
-        // Set the baud rate
-        UART().ibrd.set(div / 64);
-        UART().fbrd.set(div % 64);
+        self.set_baud_rate(params.baud_rate);
 
         // Set word length
         UART().lcrh.set(UART_CONF_WLEN_8);
@@ -134,6 +103,28 @@ impl UART {
         prcm::Clock::enable_uart_run();
     }
 
+    fn set_baud_rate(&self, baud_rate: u32) {
+        // Fractional baud rate divider
+        let div = (((MCU_CLOCK * 8) / baud_rate) + 1) / 2;
+
+        // Set the baud rate
+        UART().ibrd.set(div / 64);
+        UART().fbrd.set(div % 64);
+    }
+
+    fn fifo_enable(&self) {
+        UART().lcrh.set(UART().lcrh.get() | UART_LCRH_FEN);
+    }
+
+    fn fifo_disable(&self) {
+        UART().lcrh.set(UART().lcrh.get() & !UART_LCRH_FEN);
+    }
+
+    pub fn disable(&self) {
+        self.fifo_disable();
+        UART().ctl.set(UART().ctl.get() & !(UART_CTL_RXE | UART_CTL_TXE | UART_CTL_UARTEN));
+    }
+
     pub fn disable_interrupts(&self) {
         unsafe {
             let uart0_int = nvic::Nvic::new(peripheral_interrupts::UART0);
@@ -141,7 +132,7 @@ impl UART {
         }
 
         // Disable all UART module interrupts
-        UART().imsc.set(UART().imsc.get() & !UART_INTERRUPT_ALL);
+        UART().imsc.set(UART().imsc.get() & !UART_INT_ALL);
 
         // Clear all UART interrupts
         UART().icr.set(UART_INTERRUPT_ALL);
@@ -161,7 +152,7 @@ impl UART {
 
     pub fn send_byte(&self, c: u8) {
         // Wait for space
-        while (UART().fr.get() & UART_FR_TXFF) != 0 { }
+        while !self.tx_ready() {}
 
         UART().dr.set(c as u32);
     }
@@ -177,7 +168,11 @@ impl kernel::hil::uart::UART for UART {
     }
 
     fn init(&self, params: kernel::hil::uart::UARTParams) {
-        self.enable();
+        self.power_and_clock();
+        self.disable();
+        self.disable_interrupts();
+        self.configure(params);
+        self.enable_interrupts();
     }
 
     #[allow(unused)]
