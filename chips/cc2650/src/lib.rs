@@ -17,6 +17,7 @@ pub mod gpio;
 pub mod prcm;
 pub mod ccfg;
 pub mod uart;
+pub mod trng;
 pub mod peripheral_interrupts;
 
 mod ioc;

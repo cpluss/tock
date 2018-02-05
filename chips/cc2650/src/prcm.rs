@@ -9,7 +9,12 @@ struct PrcmRegisters {
     // Write 1 in order to load settings
     pub clk_load_ctl: VolatileCell<u32>,
 
-    _reserved1: [VolatileCell<u8>; 0x1C],
+    _reserved1: [VolatileCell<u8>; 0x10],
+
+    // TRNG, Crypto, and UDMA
+    pub sec_dma_clk_run: VolatileCell<u32>,
+    pub sec_dma_clk_sleep: VolatileCell<u32>,
+    pub sec_dma_clk_deep_sleep: VolatileCell<u32>,
 
     pub gpio_clk_gate_run: VolatileCell<u32>,
     pub gpio_clk_gate_sleep: VolatileCell<u32>,
@@ -107,5 +112,11 @@ impl Clock {
         regs.uart_clk_gate_deep_sleep.set(1);
 
         prcm_commit();
+    }
+
+    pub fn enable_trng_crypto_udma() {
+        PRCM().sec_dma_clk_run.set(1);
+        PRCM().sec_dma_clk_sleep.set(1);
+        PRCM().sec_dma_clk_deep_sleep.set(1);
     }
 }

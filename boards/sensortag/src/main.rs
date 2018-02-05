@@ -36,6 +36,7 @@ pub struct Platform {
         'static,
         capsules::virtual_alarm::VirtualMuxAlarm<'static, cc2650::rtc::Rtc>,
     >,
+    rng: &'static capsules::rng::SimpleRng<'static, cc2650::trng::Trng>,
 }
 
 impl kernel::Platform for Platform {
@@ -49,6 +50,7 @@ impl kernel::Platform for Platform {
             capsules::led::DRIVER_NUM => f(Some(self.led)),
             capsules::button::DRIVER_NUM => f(Some(self.button)),
             capsules::alarm::DRIVER_NUM => f(Some(self.alarm)),
+            capsules::rng::DRIVER_NUM => f(Some(self.rng)),
             _ => f(None),
         }
     }
@@ -192,17 +194,30 @@ pub unsafe fn reset_handler() {
     );
     virtual_alarm1.set_client(alarm);
 
+    cc2650::trng::TRNG.enable();
+    let rng = static_init!(
+        capsules::rng::SimpleRng<'static, cc2650::trng::Trng>,
+        capsules::rng::SimpleRng::new(&cc2650::trng::TRNG, kernel::Grant::create())
+    );
+    cc2650::trng::TRNG.set_client(rng);
+
     let sensortag = Platform {
         gpio,
         led,
         button,
         console,
         alarm,
+        rng: rng,
     };
+
+    // Emit some nice RNG numbers now
+    for i in 0..10 {
+        debug!("{}: {}\r\n", i, cc2650::trng::TRNG.read_number());
+    }
 
     let mut chip = cc2650::chip::Cc2650::new();
 
-    debug!("Initialization complete. Entering main loop");
+    debug!("Initialization complete. Entering main loop\r\n");
     extern "C" {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;
