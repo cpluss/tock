@@ -29,6 +29,7 @@ pub struct Platform {
     gpio: &'static capsules::gpio::GPIO<'static, cc2650::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, cc2650::gpio::GPIOPin>,
     button: &'static capsules::button::Button<'static, cc2650::gpio::GPIOPin>,
+    console: &'static capsules::console::Console<'static, cc2650::uart::UART>,
 }
 
 impl kernel::Platform for Platform {
@@ -37,6 +38,7 @@ impl kernel::Platform for Platform {
         F: FnOnce(Option<&kernel::Driver>) -> R,
     {
         match driver_num {
+            capsules::console::DRIVER_NUM => f(Some(self.console)),
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
             capsules::button::DRIVER_NUM => f(Some(self.button)),
@@ -147,16 +149,27 @@ pub unsafe fn reset_handler() {
         pin.set_client(gpio);
     }
 
-    cc2650::uart::UART0.enable();
-    cc2650::uart::UART0.put_char('F' as u8);
+    let console = static_init!(
+        capsules::console::Console<cc2650::uart::UART>,
+        capsules::console::Console::new(
+        &cc2650::uart::UART0,
+        115200,
+        &mut capsules::console::WRITE_BUF,
+        kernel::Grant::create()
+        )
+    );
+    kernel::hil::uart::UART::set_client(&cc2650::uart::UART0, console);
+    console.initialize();
 
-    loop { }
+    // Attach the kernel debug interface to this console
+    let kc = static_init!(capsules::console::App, capsules::console::App::default());
+    kernel::debug::assign_console_driver(Some(console), kc);
 
-    let sensortag = Platform { gpio, led, button };
+    let sensortag = Platform { gpio, led, button, console };
 
     let mut chip = cc2650::chip::Cc2650::new();
 
-    //debug!("Initialization complete. Entering main loop\r");
+    debug!("Initialization complete. Entering main loop\r");
     extern "C" {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;
