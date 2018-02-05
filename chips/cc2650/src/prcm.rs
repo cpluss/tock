@@ -2,10 +2,8 @@
 
 use kernel::common::VolatileCell;
 
-pub const PRCM_BASE: usize = 0x4008_2000;
-
 #[repr(C)]
-struct PRCM {
+struct PrcmRegisters {
     _reserved0: [VolatileCell<u8>; 0x28],
 
     // Write 1 in order to load settings
@@ -40,19 +38,17 @@ struct PRCM {
     pub pd_stat0_periph: VolatileCell<u32>,
 }
 
-#[allow(non_snake_case)]
-fn PRCM() -> &'static PRCM {
-    unsafe { &*(PRCM_BASE as *const PRCM) }
-}
+const PRCM_BASE: *mut PrcmRegisters = 0x4008_2000 as *mut PrcmRegisters;
 
 /*
     In order to save changes to the PRCM, we need to
     trigger
 */
 fn prcm_commit() {
-    PRCM().clk_load_ctl.set(1);
+    let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+    regs.clk_load_ctl.set(1);
     // Wait for the settings to take effect
-    while (PRCM().clk_load_ctl.get() & 0b10) == 0 {}
+    while (regs.clk_load_ctl.get() & 0b10) == 0 {}
 }
 
 pub enum PowerDomain {
@@ -68,12 +64,14 @@ pub struct Power(());
 
 impl Power {
     pub fn enable_domain(domain: PowerDomain) {
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+
         match domain {
             PowerDomain::Peripherals => {
-                PRCM().pd_ctl0.set(PRCM().pd_ctl0.get() | 0x4);
+                regs.pd_ctl0.set(regs.pd_ctl0.get() | 0x4);
             },
             PowerDomain::Serial => {
-                PRCM().pd_ctl0.set(PRCM().pd_ctl0.get() | 0x2);
+                regs.pd_ctl0.set(regs.pd_ctl0.get() | 0x2);
             }
             _ => {
                 panic!("Tried to turn on a power domain not yet specified!");
@@ -82,9 +80,10 @@ impl Power {
     }
 
     pub fn is_enabled(domain: PowerDomain) -> bool {
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
         match domain {
-            PowerDomain::Peripherals => (PRCM().pd_stat0_periph.get() & 1) >= 1,
-            PowerDomain::Serial => (PRCM().pd_stat0_serial.get() & 1) >= 1,
+            PowerDomain::Peripherals => (regs.pd_stat0_periph.get() & 1) >= 1,
+            PowerDomain::Serial => (regs.pd_stat0_serial.get() & 1) >= 1,
             _ => false,
         }
     }
@@ -94,16 +93,18 @@ pub struct Clock(());
 
 impl Clock {
     pub fn enable_gpio() {
-        PRCM().gpio_clk_gate_run.set(1);
-        PRCM().gpio_clk_gate_sleep.set(1);
-        PRCM().gpio_clk_gate_deep_sleep.set(1);
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+        regs.gpio_clk_gate_run.set(1);
+        regs.gpio_clk_gate_sleep.set(1);
+        regs.gpio_clk_gate_deep_sleep.set(1);
 
         prcm_commit();
     }
     pub fn enable_uart_run() {
-        PRCM().uart_clk_gate_run.set(1);
-        PRCM().uart_clk_gate_sleep.set(1);
-        PRCM().uart_clk_gate_deep_sleep.set(1);
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+        regs.uart_clk_gate_run.set(1);
+        regs.uart_clk_gate_sleep.set(1);
+        regs.uart_clk_gate_deep_sleep.set(1);
 
         prcm_commit();
     }
