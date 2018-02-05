@@ -56,9 +56,6 @@ fn UART() -> &'static UART_REGS { unsafe { &*(UART_BASE as *const UART_REGS) } }
 
 pub struct UART {
     client: Cell<Option<&'static uart::Client>>,
-    buffer: TakeCell<'static, [u8]>,
-    len: Cell<usize>,
-    index: Cell<usize>,
 }
 
 pub static mut UART0: UART = UART::new();
@@ -67,9 +64,6 @@ impl UART {
     pub const fn new() -> UART {
         UART {
             client: Cell::new(None),
-            buffer: TakeCell::empty(),
-            len: Cell::new(0),
-            index: Cell::new(0),
         }
     }
 
@@ -184,6 +178,11 @@ impl kernel::hil::uart::UART for UART {
 
     #[allow(unused)]
     fn transmit(&self, tx_data: &'static mut [u8], tx_len: usize) {
+        if tx_len == 0 { return; }
+
+        for i in 0..tx_len {
+            self.put_char(tx_data[i]);
+        }
     }
 
     #[allow(unused)]
