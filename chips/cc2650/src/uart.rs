@@ -73,13 +73,13 @@ impl UART {
         * to avoid falling edge glitches
         */
         unsafe {
-            gpio::PORT[BOARD_IOID_UART_TX].make_output();
-            gpio::PORT[BOARD_IOID_UART_TX].set();
+            gpio::PORT[BOARD_IO_UART_TX].make_output();
+            gpio::PORT[BOARD_IO_UART_TX].set();
         }
 
         // Map UART signals to IO pin
-        ioc::IOCFG[BOARD_IOID_UART_TX].enable_uart_tx();
-        ioc::IOCFG[BOARD_IOID_UART_RX].enable_uart_rx();
+        ioc::IOCFG[BOARD_IO_UART_TX].enable_uart_tx();
+        ioc::IOCFG[BOARD_IO_UART_RX].enable_uart_rx();
 
         // Disable the UART before configuring
         self.disable();
@@ -135,12 +135,12 @@ impl UART {
         UART().imsc.set(UART().imsc.get() & !UART_INT_ALL);
 
         // Clear all UART interrupts
-        UART().icr.set(UART_INTERRUPT_ALL);
+        UART().icr.set(UART_INT_ALL);
     }
 
     pub fn enable_interrupts(&self) {
         // Clear all UART interrupts
-        UART().icr.set(UART_INTERRUPT_ALL);
+        UART().icr.set(UART_INT_ALL);
 
         UART().imsc.set(UART().imsc.get() | UART_INT_RT | UART_INT_RX);
 
