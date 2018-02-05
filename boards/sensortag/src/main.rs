@@ -192,12 +192,3 @@ pub unsafe fn reset_handler() {
         &kernel::ipc::IPC::new(),
     );
 }
-
-/*
-#[cfg(not(test))]
-#[no_mangle]
-#[lang = "panic_fmt"]
-pub unsafe extern "C" fn panic_fmt(_args: Arguments, _file: &'static str, _line: u32) -> ! {
-    loop {}
-}
-*/
