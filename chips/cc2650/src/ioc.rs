@@ -39,7 +39,8 @@ impl IocfgPin {
     }
 
     pub fn enable_uart_rx(&self) {
-        let pin_ioc = &IOC().iocfg[self.pin];
+        let regs: &IocRegisters = unsafe { &*IOC_BASE };
+        let pin_ioc = regs.iocfg[self.pin];
 
         pin_ioc.set(pin_ioc.get() | IOC_UART0_RX_ID);
         self.set_input_mode(hil::gpio::InputMode::PullNone);
@@ -47,7 +48,8 @@ impl IocfgPin {
     }
 
     pub fn enable_uart_tx(&self) {
-        let pin_ioc = &IOC().iocfg[self.pin];
+        let regs: &IocRegisters = unsafe { &*IOC_BASE };
+        let pin_ioc = regs.iocfg[self.pin];
 
         pin_ioc.set(pin_ioc.get() | IOC_UART0_TX_ID);
         self.set_input_mode(hil::gpio::InputMode::PullNone);

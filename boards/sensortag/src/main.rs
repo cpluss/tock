@@ -12,7 +12,6 @@ extern crate kernel;
 
 use cc2650::prcm;
 use cc2650::aon;
-use core::fmt::Arguments;
 
 #[macro_use]
 pub mod io;
