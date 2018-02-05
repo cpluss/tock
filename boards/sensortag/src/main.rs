@@ -12,7 +12,6 @@ extern crate kernel;
 
 use cc2650::prcm;
 use cc2650::aon;
-use core::fmt::Arguments;
 
 #[macro_use]
 pub mod io;
@@ -110,9 +109,25 @@ pub unsafe fn reset_handler() {
         btn.set_client(button);
     }
 
+    let console = static_init!(
+        capsules::console::Console<cc2650::uart::UART>,
+        capsules::console::Console::new(
+        &cc2650::uart::UART0,
+        115200,
+        &mut capsules::console::WRITE_BUF,
+        kernel::Grant::create()
+        )
+    );
+    kernel::hil::uart::UART::set_client(&cc2650::uart::UART0, console);
+    console.initialize();
+
+    // Attach the kernel debug interface to this console
+    let kc = static_init!(capsules::console::App, capsules::console::App::default());
+    kernel::debug::assign_console_driver(Some(console), kc);
+
     // Setup for remaining GPIO pins
     let gpio_pins = static_init!(
-        [&'static cc2650::gpio::GPIOPin; 28],
+        [&'static cc2650::gpio::GPIOPin; 26],
         [
             &cc2650::gpio::PORT[1],
             &cc2650::gpio::PORT[2],
@@ -138,8 +153,6 @@ pub unsafe fn reset_handler() {
             &cc2650::gpio::PORT[25],
             &cc2650::gpio::PORT[26],
             &cc2650::gpio::PORT[27],
-            &cc2650::gpio::PORT[28],
-            &cc2650::gpio::PORT[29],
             &cc2650::gpio::PORT[30],
             &cc2650::gpio::PORT[31]
         ]
@@ -152,27 +165,11 @@ pub unsafe fn reset_handler() {
         pin.set_client(gpio);
     }
 
-    let console = static_init!(
-        capsules::console::Console<cc2650::uart::UART>,
-        capsules::console::Console::new(
-        &cc2650::uart::UART0,
-        115200,
-        &mut capsules::console::WRITE_BUF,
-        kernel::Grant::create()
-        )
-    );
-    kernel::hil::uart::UART::set_client(&cc2650::uart::UART0, console);
-    console.initialize();
-
-    // Attach the kernel debug interface to this console
-    let kc = static_init!(capsules::console::App, capsules::console::App::default());
-    kernel::debug::assign_console_driver(Some(console), kc);
-
     let sensortag = Platform { gpio, led, button, console };
 
     let mut chip = cc2650::chip::Cc2650::new();
 
-    debug!("Initialization complete. Entering main loop\r");
+    debug!("Initialization complete. Entering main loop");
     extern "C" {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;
