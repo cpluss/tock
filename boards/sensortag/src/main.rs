@@ -14,6 +14,9 @@ use cc2650::prcm;
 use cc2650::aon;
 use core::fmt::Arguments;
 
+#[macro_use]
+pub mod io;
+
 // How should the kernel respond when a process faults.
 const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
 
@@ -29,6 +32,7 @@ pub struct Platform {
     gpio: &'static capsules::gpio::GPIO<'static, cc2650::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, cc2650::gpio::GPIOPin>,
     button: &'static capsules::button::Button<'static, cc2650::gpio::GPIOPin>,
+    console: &'static capsules::console::Console<'static, cc2650::uart::UART>,
     alarm: &'static capsules::alarm::AlarmDriver<
         'static,
         capsules::virtual_alarm::VirtualMuxAlarm<'static, cc2650::rtc::Rtc>,
@@ -41,6 +45,7 @@ impl kernel::Platform for Platform {
         F: FnOnce(Option<&kernel::Driver>) -> R,
     {
         match driver_num {
+            capsules::console::DRIVER_NUM => f(Some(self.console)),
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
             capsules::button::DRIVER_NUM => f(Some(self.button)),
@@ -110,9 +115,25 @@ pub unsafe fn reset_handler() {
         btn.set_client(button);
     }
 
+    let console = static_init!(
+        capsules::console::Console<cc2650::uart::UART>,
+        capsules::console::Console::new(
+        &cc2650::uart::UART0,
+        115200,
+        &mut capsules::console::WRITE_BUF,
+        kernel::Grant::create()
+        )
+    );
+    kernel::hil::uart::UART::set_client(&cc2650::uart::UART0, console);
+    console.initialize();
+
+    // Attach the kernel debug interface to this console
+    let kc = static_init!(capsules::console::App, capsules::console::App::default());
+    kernel::debug::assign_console_driver(Some(console), kc);
+
     // Setup for remaining GPIO pins
     let gpio_pins = static_init!(
-        [&'static cc2650::gpio::GPIOPin; 28],
+        [&'static cc2650::gpio::GPIOPin; 26],
         [
             &cc2650::gpio::PORT[1],
             &cc2650::gpio::PORT[2],
@@ -138,8 +159,6 @@ pub unsafe fn reset_handler() {
             &cc2650::gpio::PORT[25],
             &cc2650::gpio::PORT[26],
             &cc2650::gpio::PORT[27],
-            &cc2650::gpio::PORT[28],
-            &cc2650::gpio::PORT[29],
             &cc2650::gpio::PORT[30],
             &cc2650::gpio::PORT[31]
         ]
@@ -178,12 +197,13 @@ pub unsafe fn reset_handler() {
         gpio,
         led,
         button,
+        console,
         alarm,
     };
 
     let mut chip = cc2650::chip::Cc2650::new();
 
-    //debug!("Initialization complete. Entering main loop\r");
+    debug!("Initialization complete. Entering main loop");
     extern "C" {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;
@@ -202,11 +222,4 @@ pub unsafe fn reset_handler() {
         &mut PROCESSES,
         &kernel::ipc::IPC::new(),
     );
-}
-
-#[cfg(not(test))]
-#[no_mangle]
-#[lang = "panic_fmt"]
-pub unsafe extern "C" fn panic_fmt(_args: Arguments, _file: &'static str, _line: u32) -> ! {
-    loop {}
 }
