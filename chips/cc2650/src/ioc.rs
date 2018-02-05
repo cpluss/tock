@@ -28,7 +28,7 @@ pub struct IocfgPin {
 }
 
 impl IocfgPin {
-    pub const fn new(pin: u8) -> IocfgPin {
+    const fn new(pin: u8) -> IocfgPin {
         IocfgPin { pin: pin as usize }
     }
 
