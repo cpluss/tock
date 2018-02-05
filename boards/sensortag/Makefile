@@ -5,14 +5,23 @@ TOCK_BOARD=sensortag
 TARGET=thumbv7m-none-eabi
 PLATFORM=sensortag
 
+DSLITE=$(UNIFLASH_CLI_BASE)/ccs_base/DebugServer/bin/DSLite
+PROG_BASE=0x10000
+
 include ../Makefile.common
 
-.PHONY: apps/$(APP)/build/$(TOCK_ARCH)/app.bin
-apps/$(APP)/build/$(TOCK_ARCH)/app.bin:
-	@make -C apps/$(APP) TOCK_ARCH=$(TOCK_ARCH)
+apps/%/build/$(TOCK_ARCH)/$(TOCK_ARCH).bin:
+	@make -C apps/$*
 
-target/$(TARGET)/release/sensortag-$(APP): target/$(TARGET)/release/sensortag apps/$(APP)/build/$(TOCK_ARCH)/app.bin
-	@$(OBJCOPY) --update-section .apps=../../userland/examples/$(APP)/build/$(TOCK_ARCH)/app.bin \
-	  --set-section-flags .apps=alloc,code \
-	  target/$(TARGET)/release/sensortag $@
+flash: guard-UNIFLASH_CLI_BASE target/$(TARGET)/release/sensortag
+	@echo "Flashing target/$(TARGET)/release/sensortag"
+	@$(DSLITE) flash -c jtag/cc2650.ccxml -f target/$(TARGET)/release/sensortag
 
+flash-%: apps/%/build/$(TOCK_ARCH)/$(TOCK_ARCH).bin guard-DSLITE
+	@$(DSLITE) flash -c jtag/cc2650.ccxml -e -v -f $<,$(PROG_BASE)
+
+guard-%:
+	@ if [ "${${*}}" = "" ]; then \
+		echo "Environment variable $* not set, see readme for more details."; \
+		exit 1; \
+	fi
