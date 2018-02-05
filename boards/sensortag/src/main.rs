@@ -29,6 +29,10 @@ pub struct Platform {
     gpio: &'static capsules::gpio::GPIO<'static, cc2650::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, cc2650::gpio::GPIOPin>,
     button: &'static capsules::button::Button<'static, cc2650::gpio::GPIOPin>,
+    alarm: &'static capsules::alarm::AlarmDriver<
+        'static,
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc2650::rtc::Rtc>,
+    >,
 }
 
 impl kernel::Platform for Platform {
@@ -40,6 +44,7 @@ impl kernel::Platform for Platform {
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
             capsules::button::DRIVER_NUM => f(Some(self.button)),
+            capsules::alarm::DRIVER_NUM => f(Some(self.alarm)),
             _ => f(None),
         }
     }
@@ -147,7 +152,34 @@ pub unsafe fn reset_handler() {
         pin.set_client(gpio);
     }
 
-    let sensortag = Platform { gpio, led, button };
+    let rtc = &cc2650::rtc::RTC;
+    rtc.start();
+
+    let mux_alarm = static_init!(
+        capsules::virtual_alarm::MuxAlarm<'static, cc2650::rtc::Rtc>,
+        capsules::virtual_alarm::MuxAlarm::new(&cc2650::rtc::RTC)
+    );
+    rtc.set_client(mux_alarm);
+
+    let virtual_alarm1 = static_init!(
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc2650::rtc::Rtc>,
+        capsules::virtual_alarm::VirtualMuxAlarm::new(mux_alarm)
+    );
+    let alarm = static_init!(
+        capsules::alarm::AlarmDriver<
+            'static,
+            capsules::virtual_alarm::VirtualMuxAlarm<'static, cc2650::rtc::Rtc>,
+        >,
+        capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create())
+    );
+    virtual_alarm1.set_client(alarm);
+
+    let sensortag = Platform {
+        gpio,
+        led,
+        button,
+        alarm,
+    };
 
     let mut chip = cc2650::chip::Cc2650::new();
 
