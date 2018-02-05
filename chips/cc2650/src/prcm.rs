@@ -51,6 +51,8 @@ fn PRCM() -> &'static PRCM {
 */
 fn prcm_commit() {
     PRCM().clk_load_ctl.set(1);
+    // Wait for the settings to take effect
+    while (PRCM().clk_load_ctl.get() & 0b10) == 0 {}
 }
 
 pub enum PowerDomain {
