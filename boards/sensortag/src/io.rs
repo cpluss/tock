@@ -14,12 +14,15 @@ impl Write for Writer {
         let uart = unsafe { &mut cc2650::uart::UART0 };
         if !self.initialized {
             self.initialized = true;
-            uart.enable();
+            uart.init(uart::UARTParams {
+                baud_rate: 115200,
+                stop_bits: uart::StopBits::One,
+                parity: uart::Parity::None,
+                hw_flow_control: false,
+            });
         }
         for c in s.bytes() {
-            unsafe {
-                uart.send_byte(c);
-            }
+            uart.send_byte(c);
             while !uart.tx_ready() {}
         }
         Ok(())
@@ -36,13 +39,15 @@ pub unsafe extern "C" fn rust_begin_unwind(
 ) -> ! {
 
     let writer = &mut WRITER;
-    writer.write_fmt(format_args!(
+    let _ = writer.write_fmt(format_args!(
         "\r\nKernel panic at {}:{}:\r\n\t\"",
         _file, _line
     ));
+    let _ = write(writer, _args);
+    let _ = writer.write_str("\"\r\n");
 
-    let led0 = &cc2650::gpio::PORT[10];
-    let led1 = &cc2650::gpio::PORT[15];
+    let led0 = &cc2650::gpio::PORT[10]; // Red led
+    let led1 = &cc2650::gpio::PORT[15]; // Green led
 
     led0.make_output();
     led1.make_output();
