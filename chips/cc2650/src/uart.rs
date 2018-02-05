@@ -159,11 +159,15 @@ impl UART {
         }
     }
 
-    pub fn put_char(&self, c: u8) {
+    pub fn send_byte(&self, c: u8) {
         // Wait for space
         while (UART().fr.get() & UART_FR_TXFF) != 0 { }
 
         UART().dr.set(c as u32);
+    }
+
+    pub fn tx_ready(&self) -> bool {
+        UART().fr.get() & UART_FR_TXFF == 0
     }
 }
 
@@ -181,7 +185,7 @@ impl kernel::hil::uart::UART for UART {
         if tx_len == 0 { return; }
 
         for i in 0..tx_len {
-            self.put_char(tx_data[i]);
+            self.send_byte(tx_data[i]);
         }
     }
 

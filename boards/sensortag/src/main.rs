@@ -14,6 +14,9 @@ use cc2650::prcm;
 use cc2650::aon;
 use core::fmt::Arguments;
 
+#[macro_use]
+pub mod io;
+
 // How should the kernel respond when a process faults.
 const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
 
@@ -190,9 +193,11 @@ pub unsafe fn reset_handler() {
     );
 }
 
+/*
 #[cfg(not(test))]
 #[no_mangle]
 #[lang = "panic_fmt"]
 pub unsafe extern "C" fn panic_fmt(_args: Arguments, _file: &'static str, _line: u32) -> ! {
     loop {}
 }
+*/
