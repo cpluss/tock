@@ -15,10 +15,10 @@ apps/%/build/$(TOCK_ARCH)/$(TOCK_ARCH).bin:
 
 flash: guard-UNIFLASH_CLI_BASE target/$(TARGET)/release/sensortag
 	@echo "Flashing target/$(TARGET)/release/sensortag"
-	@$(DSLITE) flash -c jtag/cc2650.ccxml -f target/$(TARGET)/release/sensortag
+	@$(DSLITE) flash -c jtag/cc2650.ccxml -e -f target/$(TARGET)/release/sensortag
 
 flash-%: apps/%/build/$(TOCK_ARCH)/$(TOCK_ARCH).bin guard-DSLITE
-	@$(DSLITE) flash -c jtag/cc2650.ccxml -e -v -f $<,$(PROG_BASE)
+	@$(DSLITE) flash -c jtag/cc2650.ccxml -e -f $<,$(PROG_BASE)
 
 guard-%:
 	@ if [ "${${*}}" = "" ]; then \
