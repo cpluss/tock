@@ -31,7 +31,7 @@ impl IocfgPin {
 
     pub fn enable_gpio(&self) {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
 
         // In order to configure the pin for GPIO we need to clear
         // the lower 6 bits.
@@ -40,7 +40,7 @@ impl IocfgPin {
 
     pub fn enable_uart_rx(&self) {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
 
         pin_ioc.set(pin_ioc.get() | IOC_UART0_RX_ID);
         self.set_input_mode(hil::gpio::InputMode::PullNone);
@@ -49,7 +49,7 @@ impl IocfgPin {
 
     pub fn enable_uart_tx(&self) {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
 
         pin_ioc.set(pin_ioc.get() | IOC_UART0_TX_ID);
         self.set_input_mode(hil::gpio::InputMode::PullNone);
@@ -58,7 +58,7 @@ impl IocfgPin {
 
     pub fn set_input_mode(&self, mode: hil::gpio::InputMode) {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
 
         let conf = match mode {
             hil::gpio::InputMode::PullDown => 1,
@@ -72,20 +72,20 @@ impl IocfgPin {
     pub fn enable_output(&self) {
         // Enable by disabling input
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
         pin_ioc.set(pin_ioc.get() & !(1 << IOC_IE));
     }
 
     pub fn enable_input(&self) {
         // Set IE (Input Enable) bit
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
         pin_ioc.set(pin_ioc.get() | 1 << IOC_IE);
     }
 
     pub fn enable_interrupt(&self, mode: hil::gpio::InterruptMode) {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
 
         let ioc_edge_mode = match mode {
             hil::gpio::InterruptMode::FallingEdge => 1 << IOC_EDGE_DET,
@@ -98,7 +98,7 @@ impl IocfgPin {
 
     pub fn disable_interrupt(&self) {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
-        let pin_ioc = regs.iocfg[self.pin];
+        let pin_ioc = &regs.iocfg[self.pin];
         pin_ioc.set(pin_ioc.get() & !(1 << IOC_EDGE_IRQ_EN));
     }
 }
