@@ -31,7 +31,7 @@ pub const MCU_CLOCK: u32 = 48_000_000;
 pub const UART_BASE: usize = 0x4000_1000;
 
 #[repr(C)]
-pub struct UART_REGS {
+pub struct Registers {
     pub dr: VolatileCell<u32>,
     pub rsr_ecr: VolatileCell<u32>,
     _reserved0: [VolatileCell<u8>; 0x10],
@@ -49,10 +49,8 @@ pub struct UART_REGS {
     pub dmactl: VolatileCell<u32>,
 }
 
-#[allow(non_snake_case)]
-fn UART() -> &'static UART_REGS { unsafe { &*(UART_BASE as *const UART_REGS) } }
-
 pub struct UART {
+    regs: *const Registers,
     client: Cell<Option<&'static uart::Client>>,
 }
 
@@ -61,6 +59,7 @@ pub static mut UART0: UART = UART::new();
 impl UART {
     pub const fn new() -> UART {
         UART {
+            regs: UART_BASE as *mut Registers,
             client: Cell::new(None),
         }
     }
@@ -87,14 +86,15 @@ impl UART {
         self.set_baud_rate(params.baud_rate);
 
         // Set word length
-        UART().lcrh.set(UART_CONF_WLEN_8);
+        let regs = unsafe { &*self.regs };
+        regs.lcrh.set(UART_CONF_WLEN_8);
 
         // Set fifo interrupt level
-        UART().ifls.set(UART_FIFO_TX7_8 | UART_FIFO_RX4_8);
+        regs.ifls.set(UART_FIFO_TX7_8 | UART_FIFO_RX4_8);
         self.fifo_enable();
 
         // Enable, TX, RT and UART
-        UART().ctl.set(ctl_val);
+        regs.ctl.set(ctl_val);
     }
 
     fn power_and_clock(&self) {
@@ -108,21 +108,25 @@ impl UART {
         let div = (((MCU_CLOCK * 8) / baud_rate) + 1) / 2;
 
         // Set the baud rate
-        UART().ibrd.set(div / 64);
-        UART().fbrd.set(div % 64);
+        let regs = unsafe { &*self.regs };
+        regs.ibrd.set(div / 64);
+        regs.fbrd.set(div % 64);
     }
 
     fn fifo_enable(&self) {
-        UART().lcrh.set(UART().lcrh.get() | UART_LCRH_FEN);
+        let regs = unsafe { &*self.regs };
+        regs.lcrh.set(regs.lcrh.get() | UART_LCRH_FEN);
     }
 
     fn fifo_disable(&self) {
-        UART().lcrh.set(UART().lcrh.get() & !UART_LCRH_FEN);
+        let regs = unsafe { &*self.regs };
+        regs.lcrh.set(regs.lcrh.get() & !UART_LCRH_FEN);
     }
 
     pub fn disable(&self) {
         self.fifo_disable();
-        UART().ctl.set(UART().ctl.get() & !(UART_CTL_RXE | UART_CTL_TXE | UART_CTL_UARTEN));
+        let regs = unsafe { &*self.regs };
+        regs.ctl.set(regs.ctl.get() & !(UART_CTL_RXE | UART_CTL_TXE | UART_CTL_UARTEN));
     }
 
     pub fn disable_interrupts(&self) {
@@ -132,17 +136,20 @@ impl UART {
         }
 
         // Disable all UART module interrupts
-        UART().imsc.set(UART().imsc.get() & !UART_INT_ALL);
+        let regs = unsafe { &*self.regs };
+        regs.imsc.set(regs.imsc.get() & !UART_INT_ALL);
 
         // Clear all UART interrupts
-        UART().icr.set(UART_INT_ALL);
+        regs.icr.set(UART_INT_ALL);
     }
 
     pub fn enable_interrupts(&self) {
         // Clear all UART interrupts
-        UART().icr.set(UART_INT_ALL);
+        let regs = unsafe { &*self.regs };
+        regs.icr.set(UART_INT_ALL);
 
-        UART().imsc.set(UART().imsc.get() | UART_INT_RT | UART_INT_RX);
+        // We don't care about TX interrupts
+        regs.imsc.set(regs.imsc.get() | UART_INT_RT | UART_INT_RX);
 
         unsafe {
             let uart0_int = nvic::Nvic::new(peripheral_interrupts::UART0);
@@ -154,21 +161,25 @@ impl UART {
         // Wait for space
         while !self.tx_ready() {}
 
-        UART().dr.set(c as u32);
+        let regs = unsafe { &*self.regs };
+        regs.dr.set(c as u32);
     }
 
     pub fn tx_ready(&self) -> bool {
-        UART().fr.get() & UART_FR_TXFF == 0
+        let regs = unsafe { &*self.regs };
+        regs.fr.get() & UART_FR_TXFF == 0
     }
 
     pub fn handle_interrupt(&self) {
         self.power_and_clock();
 
         // Get status bits
-        let flags: u32 = UART().fr.get();
+        let regs = unsafe { &*self.regs };
+        #[allow(unused)]
+        let flags: u32 = regs.fr.get();
 
         // Clear interrupts
-        UART().icr.set(UART_INT_ALL);
+        regs.icr.set(UART_INT_ALL);
     }
 }
 
