@@ -207,17 +207,12 @@ pub unsafe fn reset_handler() {
         button,
         console,
         alarm,
-        rng: rng,
+        rng,
     };
-
-    // Emit some nice RNG numbers now
-    for i in 0..10 {
-        debug!("{}: {}\r\n", i, cc2650::trng::TRNG.read_number());
-    }
 
     let mut chip = cc2650::chip::Cc2650::new();
 
-    debug!("Initialization complete. Entering main loop\r\n");
+    debug!("Initialization complete. Entering main loop\r");
     extern "C" {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;

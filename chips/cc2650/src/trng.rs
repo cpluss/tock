@@ -16,7 +16,7 @@ struct RngRegisters {
     ctl: VolatileCell<u32>,
     cfg0: VolatileCell<u32>,
 
-    _alarm_count: VolatileCell<u32>,
+    alarm_ctl: VolatileCell<u32>,
 
     _fro_en: VolatileCell<u32>,
     _fro_detune: VolatileCell<u32>,
@@ -28,8 +28,9 @@ struct RngRegisters {
     _lfsr1: VolatileCell<u32>,
     _lfsr2: VolatileCell<u32>,
 
-    _hw_opts: VolatileCell<u32>,
-    _hw_ver0: VolatileCell<u32>,
+    _r0: [u8; 0x1FB4],
+
+    sw_reset: VolatileCell<u32>,
 }
 
 const BASE_ADDRESS: *mut RngRegisters = 0x4002_8000 as *mut RngRegisters;
@@ -67,15 +68,17 @@ impl Trng {
         }
 
         // Setup the clock
-        prcm::Clock::enable_trng_crypto_udma();
+        prcm::Clock::enable_trng();
 
         let regs = unsafe { &*self.regs };
 
-        // Ensure that TRNG is disabled and set the startup samples
-        regs.ctl.set(regs.ctl.get() & !TRNG_CTL_EN);
+        regs.ctl.set(0);
+
+        // Issue a SW reset
+        regs.sw_reset.set(1);
+        while regs.sw_reset.get() != 0 { }
 
         // Set the startup samples
-        regs.ctl.set(regs.ctl.get() & !TRNG_CTL_STARTUP_CYCLES);
         regs.ctl.set(regs.ctl.get() | (1 << 16));
 
         // Configure the minimum and maximum number of samples per generated number
@@ -89,6 +92,9 @@ impl Trng {
             | (cycles_per_sample << 8) & TRNG_CFG_SIMPL_DIV
             | (min_samples_per_cycle >> 6) & TRNG_CFG_MIN_REFILL_CYCLES
         );
+
+        // Reset the alarm control
+        regs.alarm_ctl.set(0xFF);
 
         // Enable the TRNG
         regs.ctl.set(regs.ctl.get() | TRNG_CTL_EN);
