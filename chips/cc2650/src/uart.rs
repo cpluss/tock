@@ -160,6 +160,16 @@ impl UART {
     pub fn tx_ready(&self) -> bool {
         UART().fr.get() & UART_FR_TXFF == 0
     }
+
+    pub fn handle_interrupt(&self) {
+        self.power_and_clock();
+
+        // Get status bits
+        let flags: u32 = UART().fr.get();
+
+        // Clear interrupts
+        UART().icr.set(UART_INT_ALL);
+    }
 }
 
 impl kernel::hil::uart::UART for UART {
