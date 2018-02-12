@@ -83,7 +83,7 @@ impl I2C {
         self.master_control(I2C_MASTER_CMD_SINGLE_SEND);
         if !self.busy_wait_master_bus() { return false; }
 
-        true // Need to check for errors before returning true
+        self.status()
     }
 
     fn set_master_slave_address(&self, addr: u8, receive: bool) {
