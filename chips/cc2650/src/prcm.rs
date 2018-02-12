@@ -20,13 +20,17 @@ struct PrcmRegisters {
     pub gpio_clk_gate_sleep: VolatileCell<u32>,
     pub gpio_clk_gate_deep_sleep: VolatileCell<u32>,
 
-    _reserved3: [VolatileCell<u8>; 0x18],
+    _reserved3: [VolatileCell<u8>; 0xC],
+
+    pub i2c_clk_gate_run: VolatileCell<u32>,
+    pub i2c_clk_gate_sleep: VolatileCell<u32>,
+    pub i2c_clk_gate_deep_sleep: VolatileCell<u32>,
 
     pub uart_clk_gate_run: VolatileCell<u32>,
     pub uart_clk_gate_sleep: VolatileCell<u32>,
     pub uart_clk_gate_deep_sleep: VolatileCell<u32>,
 
-    _reserved4: [VolatileCell<u8>; 0xB4],
+    _reserved5: [VolatileCell<u8>; 0xB4],
 
     // Power domain control 0
     pub pd_ctl0: VolatileCell<u32>,
@@ -34,7 +38,7 @@ struct PrcmRegisters {
     pub pd_ctl0_serial: VolatileCell<u32>,
     pub pd_ctl0_peripheral: VolatileCell<u32>,
 
-    _reserved5: [VolatileCell<u8>; 0x04],
+    _reserved6: [VolatileCell<u8>; 0x04],
 
     // Power domain status 0
     pub pd_stat0: VolatileCell<u32>,
@@ -105,6 +109,7 @@ impl Clock {
 
         prcm_commit();
     }
+
     pub fn enable_uart_run() {
         let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
         regs.uart_clk_gate_run.set(1);
@@ -119,6 +124,15 @@ impl Clock {
         regs.sec_dma_clk_run.set(regs.sec_dma_clk_run.get() | 0x2);
         regs.sec_dma_clk_sleep.set(regs.sec_dma_clk_sleep.get() | 0x2);
         regs.sec_dma_clk_deep_sleep.set(regs.sec_dma_clk_deep_sleep.get() | 0x2);
+
+        prcm_commit();
+    }
+
+    pub fn enable_i2c() {
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+        regs.i2c_clk_gate_run.set(1);
+        regs.i2c_clk_gate_sleep.set(1);
+        regs.i2c_clk_gate_deep_sleep.set(1);
 
         prcm_commit();
     }
