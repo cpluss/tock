@@ -9,9 +9,13 @@ pub const I2C_MASTER_CMD_SINGLE_SEND: u32 = 0x7;
 pub const I2C_MASTER_CMD_BURST_SEND_ERROR_STOP: u32 = 0x4;
 pub const I2C_MASTER_CMD_BURST_RECEIVE_START: u32 = 0xb;
 pub const I2C_MASTER_CMD_BURST_RECEIVE_CONT: u32 = 0x9;
+pub const I2C_MASTER_CMD_BURST_SEND_START: u32 = 0x3;
+pub const I2C_MASTER_CMD_BURST_SEND_CONT: u32 = 0x1;
+pub const I2C_MASTER_CMD_BURST_SEND_FINISH: u32 = 0x5;
 
 pub const I2C_MSTAT_ERR: u32 = 0x2;
 pub const I2C_MSTAT_BUSY: u32 = 0x1;
+pub const I2C_MSTAT_BUSBSY: u32 = 0x40;
 pub const I2C_MSTAT_ARBLST: u32 = 0x10;
 pub const I2C_MSTAT_DATACK_N: u32 = 0x8;
 pub const I2C_MSTAT_ADRACK_N: u32 = 0x4;
@@ -84,7 +88,7 @@ impl I2C {
         if !self.busy_wait_master_bus() { return false; }
 
         self.master_control(I2C_MASTER_CMD_SINGLE_SEND);
-        if !self.busy_wait_master_bus() { return false; }
+        if !self.busy_wait_master() { return false; }
 
         self.status()
     }
@@ -98,8 +102,8 @@ impl I2C {
 
         let mut i = 0;
         let mut success = true;
-        while (i < (len - 1) && success) {
-            self.busy_wait_master_bus();
+        while i < (len - 1) && success {
+            self.busy_wait_master();
             success = self.status();
             if success {
                 data[i as usize] = self.master_get_data() as u8;
@@ -107,6 +111,37 @@ impl I2C {
                 i += 1;
             }
         }
+    }
+
+    fn write(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
+        self.set_master_slave_address(addr, false);
+
+        self.master_put_data(data[0]);
+
+        self.busy_wait_master_bus();
+
+        self.master_control(I2C_MASTER_CMD_BURST_SEND_START);
+        self.busy_wait_master();
+        let mut success = self.status();
+
+        for i in 0..len {
+            if !success { break; }
+            self.master_put_data(data[i as usize]);
+            if i < len - 1 {
+                self.master_control(I2C_MASTER_CMD_BURST_SEND_CONT);
+                self.busy_wait_master();
+                success = self.status();
+            }
+        }
+
+        if success {
+            self.master_control(I2C_MASTER_CMD_BURST_SEND_FINISH);
+            self.busy_wait_master();
+            success = self.status();
+            self.busy_wait_master_bus();
+        }
+
+        success
     }
 
     fn set_master_slave_address(&self, addr: u8, receive: bool) {
@@ -126,7 +161,23 @@ impl I2C {
 
     fn master_bus_busy(&self) -> bool {
         let regs: &I2CRegisters = unsafe { &*self.regs };
+        (regs.mstat_mctrl.get() & I2C_MSTAT_BUSBSY) != 0
+    }
+
+    fn master_busy(&self) -> bool {
+        let regs: &I2CRegisters = unsafe { &*self.regs };
         (regs.mstat_mctrl.get() & I2C_MSTAT_BUSY) != 0
+    }
+
+    // Limited busy wait for the master
+    fn busy_wait_master(&self) -> bool {
+        let delay = 0xFFFFFF;
+        for _ in 0..delay {
+            if !self.master_busy() {
+                return true;
+            }
+        }
+        false
     }
 
     // Limited busy wait for the master bus
