@@ -82,7 +82,7 @@ impl I2C {
         regs.mstat_mctrl.set(I2C_MCTRL_RUN);
     }
 
-    fn write_single(&self, addr: u8, data: u8) -> bool {
+    pub fn write_single(&self, addr: u8, data: u8) -> bool {
         self.set_master_slave_address(addr, false);
         self.master_put_data(data);
 
@@ -94,7 +94,7 @@ impl I2C {
         self.status()
     }
 
-    fn read(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
+    pub fn read(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
         self.set_master_slave_address(addr, true);
 
         self.busy_wait_master_bus();
@@ -126,7 +126,7 @@ impl I2C {
         success
     }
 
-    fn write(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
+    pub fn write(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
         self.set_master_slave_address(addr, false);
 
         self.master_put_data(data[0]);
@@ -157,7 +157,7 @@ impl I2C {
         success
     }
 
-    fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) -> bool {
+    pub fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) -> bool {
         self.set_master_slave_address(addr, false);
 
         self.master_put_data(data[0]);
