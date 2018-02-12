@@ -94,7 +94,7 @@ impl I2C {
         self.status()
     }
 
-    fn read(&self, addr: u8, data: &'static mut [u8], len: u8) {
+    fn read(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
         self.set_master_slave_address(addr, true);
 
         self.busy_wait_master_bus();
@@ -112,6 +112,18 @@ impl I2C {
                 i += 1;
             }
         }
+
+        if success {
+            self.master_control(I2C_MASTER_CMD_BURST_RECEIVE_FINISH);
+            self.busy_wait_master();
+            success = self.status();
+            if success {
+                data[(len - 1) as usize] = self.master_get_data() as u8;
+                self.busy_wait_master_bus();
+            }
+        }
+
+        success
     }
 
     fn write(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
