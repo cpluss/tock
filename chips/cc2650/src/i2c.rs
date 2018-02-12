@@ -1,4 +1,5 @@
 use prcm;
+use kernel::hil;
 use kernel::common::VolatileCell;
 
 pub const I2C_MCR_MFE: u32 = 0x10;
@@ -6,6 +7,8 @@ pub const I2C_MCTRL_RUN: u32 = 0x1;
 
 pub const I2C_MASTER_CMD_SINGLE_SEND: u32 = 0x7;
 pub const I2C_MASTER_CMD_BURST_SEND_ERROR_STOP: u32 = 0x4;
+pub const I2C_MASTER_CMD_BURST_RECEIVE_START: u32 = 0xb;
+pub const I2C_MASTER_CMD_BURST_RECEIVE_CONT: u32 = 0x9;
 
 pub const I2C_MSTAT_ERR: u32 = 0x2;
 pub const I2C_MSTAT_BUSY: u32 = 0x1;
@@ -86,6 +89,26 @@ impl I2C {
         self.status()
     }
 
+    fn read(&self, addr: u8, data: &'static mut [u8], len: u8) {
+        self.set_master_slave_address(addr, true);
+
+        self.busy_wait_master_bus();
+
+        self.master_control(I2C_MASTER_CMD_BURST_RECEIVE_START);
+
+        let mut i = 0;
+        let mut success = true;
+        while (i < (len - 1) && success) {
+            self.busy_wait_master_bus();
+            success = self.status();
+            if success {
+                data[i as usize] = self.master_get_data() as u8;
+                self.master_control(I2C_MASTER_CMD_BURST_RECEIVE_CONT);
+                i += 1;
+            }
+        }
+    }
+
     fn set_master_slave_address(&self, addr: u8, receive: bool) {
         let regs: &I2CRegisters = unsafe { &*self.regs };
         regs.msa.set(((addr as u32) << 1) | (receive as u32));
@@ -94,6 +117,11 @@ impl I2C {
     fn master_put_data(&self, data: u8) {
         let regs: &I2CRegisters = unsafe { &*self.regs };
         regs.mdr.set(data as u32);
+    }
+
+    fn master_get_data(&self) -> u32 {
+        let regs: &I2CRegisters = unsafe { &*self.regs };
+        regs.mdr.get()
     }
 
     fn master_bus_busy(&self) -> bool {
@@ -137,11 +165,35 @@ impl I2C {
         }
 
         // Check for errors
-        if (err & (I2C_MSTAT_ERR | I2C_MSTAT_ARBLST) != 0) {
-            return (err & (I2C_MSTAT_ARBLST | I2C_MSTAT_DATACK_N | I2C_MSTAT_ADRACK_N));
+        if err & (I2C_MSTAT_ERR | I2C_MSTAT_ARBLST) != 0 {
+            return err & (I2C_MSTAT_ARBLST | I2C_MSTAT_DATACK_N | I2C_MSTAT_ADRACK_N);
         } else {
                 return 0;
         }
     }
 
+}
+
+impl hil::i2c::I2CMaster for I2C {
+    /// This enables the entire I2C peripheral
+    #[allow(unused)]
+    fn enable(&self) {
+    }
+
+    /// This disables the entire I2C peripheral
+    #[allow(unused)]
+    fn disable(&self) {
+    }
+
+    #[allow(unused)]
+    fn write(&self, addr: u8, data: &'static mut [u8], len: u8) {
+    }
+
+    fn read(&self, addr: u8, data: &'static mut [u8], len: u8) {
+        self.read(addr, data, len);
+    }
+
+    #[allow(unused)]
+    fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) {
+    }
 }
