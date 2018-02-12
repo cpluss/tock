@@ -2,9 +2,18 @@ use prcm;
 use kernel::common::VolatileCell;
 
 pub const I2C_MCR_MFE: u32 = 0x10;
-pub const I2C_MSTAT_BUSY: u32 = 0x1;
 pub const I2C_MCTRL_RUN: u32 = 0x1;
+
 pub const I2C_MASTER_CMD_SINGLE_SEND: u32 = 0x7;
+pub const I2C_MASTER_CMD_BURST_SEND_ERROR_STOP: u32 = 0x4;
+
+pub const I2C_MSTAT_ERR: u32 = 0x2;
+pub const I2C_MSTAT_BUSY: u32 = 0x1;
+pub const I2C_MSTAT_ARBLST: u32 = 0x10;
+pub const I2C_MSTAT_DATACK_N: u32 = 0x8;
+pub const I2C_MSTAT_ADRACK_N: u32 = 0x4;
+pub const I2C_MSTAT_DATACK_N_M: u32 = 0x8;
+pub const I2C_MSTAT_ADRACK_N_M: u32 = 0x4;
 
 pub const MCU_CLOCK: u32 = 48_000_000;
 
@@ -106,6 +115,33 @@ impl I2C {
     fn master_control(&self, cmd: u32) {
         let regs: &I2CRegisters = unsafe { &*self.regs };
         regs.mstat_mctrl.set(cmd);
+    }
+
+    fn status(&self) -> bool {
+        let status = self.master_err();
+
+        if (status & (I2C_MSTAT_DATACK_N_M | I2C_MSTAT_ADRACK_N_M)) != 0 {
+            self.master_control(I2C_MASTER_CMD_BURST_SEND_ERROR_STOP);
+        }
+
+        status == 0
+    }
+
+    fn master_err(&self) -> u32 {
+        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let err = regs.mstat_mctrl.get();
+
+        // If the master is busy there is not error to report
+        if (err & I2C_MSTAT_BUSY) == 1 {
+            return 0;
+        }
+
+        // Check for errors
+        if (err & (I2C_MSTAT_ERR | I2C_MSTAT_ARBLST) != 0) {
+            return (err & (I2C_MSTAT_ARBLST | I2C_MSTAT_DATACK_N | I2C_MSTAT_ADRACK_N));
+        } else {
+                return 0;
+        }
     }
 
 }
