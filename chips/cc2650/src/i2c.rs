@@ -12,6 +12,7 @@ pub const I2C_MASTER_CMD_BURST_RECEIVE_CONT: u32 = 0x9;
 pub const I2C_MASTER_CMD_BURST_SEND_START: u32 = 0x3;
 pub const I2C_MASTER_CMD_BURST_SEND_CONT: u32 = 0x1;
 pub const I2C_MASTER_CMD_BURST_SEND_FINISH: u32 = 0x5;
+pub const I2C_MASTER_CMD_BURST_RECEIVE_FINISH: u32 = 0x5;
 
 pub const I2C_MSTAT_ERR: u32 = 0x2;
 pub const I2C_MSTAT_BUSY: u32 = 0x1;
@@ -144,6 +145,57 @@ impl I2C {
         success
     }
 
+    fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) -> bool {
+        self.set_master_slave_address(addr, false);
+
+        self.master_put_data(data[0]);
+
+        self.busy_wait_master_bus();
+
+        self.master_control(I2C_MASTER_CMD_BURST_SEND_START);
+        self.busy_wait_master();
+        let mut success = self.status();
+
+        for i in 0..write_len {
+            if !success { break; }
+
+            self.master_put_data(data[i as usize]);
+
+            self.master_control(I2C_MASTER_CMD_BURST_SEND_CONT);
+            self.busy_wait_master();
+            success = self.status();
+        }
+
+        if !success { return false; }
+
+        self.set_master_slave_address(addr, true);
+
+        self.master_control(I2C_MASTER_CMD_BURST_RECEIVE_START);
+
+        let mut i = 0;
+        while i < (read_len - 1) && success {
+            self.busy_wait_master();
+            success = self.status();
+            if success {
+                data[i as usize] = self.master_get_data() as u8;
+                self.master_control(I2C_MASTER_CMD_BURST_RECEIVE_CONT);
+                i += 1;
+            }
+        }
+
+        if success {
+            self.master_control(I2C_MASTER_CMD_BURST_RECEIVE_FINISH);
+            self.busy_wait_master();
+            success = self.status();
+            if success {
+                data[(read_len - 1) as usize] = self.master_get_data() as u8;
+                self.busy_wait_master_bus();
+            }
+        }
+
+        success
+    }
+
     fn set_master_slave_address(&self, addr: u8, receive: bool) {
         let regs: &I2CRegisters = unsafe { &*self.regs };
         regs.msa.set(((addr as u32) << 1) | (receive as u32));
@@ -236,15 +288,15 @@ impl hil::i2c::I2CMaster for I2C {
     fn disable(&self) {
     }
 
-    #[allow(unused)]
     fn write(&self, addr: u8, data: &'static mut [u8], len: u8) {
+        self.write(addr, data, len);
     }
 
     fn read(&self, addr: u8, data: &'static mut [u8], len: u8) {
         self.read(addr, data, len);
     }
 
-    #[allow(unused)]
     fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) {
+        self.write_read(addr, data, write_len, read_len);
     }
 }
