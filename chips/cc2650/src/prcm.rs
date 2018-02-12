@@ -136,4 +136,9 @@ impl Clock {
 
         prcm_commit();
     }
+
+    pub fn i2c_run_clk_enabled() -> bool {
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+        regs.i2c_clk_gate_run.get() & 1 != 0
+    }
 }

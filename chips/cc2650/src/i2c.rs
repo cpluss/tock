@@ -298,6 +298,18 @@ impl I2C {
         }
     }
 
+    fn accessible() -> bool {
+        if !prcm::Power::is_enabled(prcm::PowerDomain::Serial) {
+            return false;
+        }
+
+        if !prcm::Clock::i2c_run_clk_enabled() {
+            return false;
+        }
+
+        true
+    }
+
 }
 
 impl hil::i2c::I2CMaster for I2C {
