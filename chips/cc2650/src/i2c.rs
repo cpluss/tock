@@ -1,5 +1,6 @@
 use prcm;
 use kernel::hil;
+use core::cell::Cell;
 use kernel::common::VolatileCell;
 
 pub const I2C_MCR_MFE: u32 = 0x10;
@@ -26,7 +27,7 @@ pub const I2C_MSTAT_ADRACK_N_M: u32 = 0x4;
 pub const MCU_CLOCK: u32 = 48_000_000;
 
 #[repr(C)]
-pub struct I2CRegisters {
+pub struct Registers {
     pub soar: VolatileCell<u32>,
     pub sstat_sctl: VolatileCell<u32>,
     pub sdr: VolatileCell<u32>,
@@ -47,13 +48,23 @@ pub struct I2CRegisters {
     pub mcr: VolatileCell<u32>,
 }
 
-pub const I2C_BASE: *mut I2CRegisters = 0x4000_2000 as *mut I2CRegisters;
+pub const I2C_BASE: *mut Registers = 0x4000_2000 as *mut Registers;
 
 pub struct I2C {
-    regs: *mut I2CRegisters
+    regs: *mut Registers,
+    slave_addr: Cell<u8>,
+    client: Cell<Option<&'static hil::i2c::I2CHwMasterClient>>,
 }
 
 impl I2C {
+    pub const fn new() -> I2C {
+        I2C {
+            regs: I2C_BASE as *mut Registers,
+            slave_addr: Cell::new(0),
+            client: Cell::new(None),
+        }
+    }
+
     pub fn wakeup(&self) {
         prcm::Power::enable_domain(prcm::PowerDomain::Serial);
         while !prcm::Power::is_enabled(prcm::PowerDomain::Serial) { };
@@ -70,20 +81,20 @@ impl I2C {
 
         // Compute SCL (serial clock) period
         let tpr = ((MCU_CLOCK + (2 * 10 * freq) - 1) / (2 * 10 * freq)) - 1;
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         regs.mtpr.set(tpr);
     }
 
     fn master_enable(&self) {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         // Set as master
         regs.mcr.set(regs.mcr.get() | I2C_MCR_MFE);
         // Enable master to transfer/receive data
         regs.mstat_mctrl.set(I2C_MCTRL_RUN);
     }
 
-    pub fn write_single(&self, addr: u8, data: u8) -> bool {
-        self.set_master_slave_address(addr, false);
+    pub fn write_single(&self, data: u8) -> bool {
+        self.set_master_slave_address(self.slave_addr.get(), false);
         self.master_put_data(data);
 
         if !self.busy_wait_master_bus() { return false; }
@@ -94,8 +105,8 @@ impl I2C {
         self.status()
     }
 
-    pub fn read(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
-        self.set_master_slave_address(addr, true);
+    pub fn read(&self, data: &'static mut [u8], len: u8) -> bool {
+        self.set_master_slave_address(self.slave_addr.get(), true);
 
         self.busy_wait_master_bus();
 
@@ -126,8 +137,8 @@ impl I2C {
         success
     }
 
-    pub fn write(&self, addr: u8, data: &'static mut [u8], len: u8) -> bool {
-        self.set_master_slave_address(addr, false);
+    pub fn write(&self, data: &'static mut [u8], len: u8) -> bool {
+        self.set_master_slave_address(self.slave_addr.get(), false);
 
         self.master_put_data(data[0]);
 
@@ -157,8 +168,8 @@ impl I2C {
         success
     }
 
-    pub fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) -> bool {
-        self.set_master_slave_address(addr, false);
+    pub fn write_read(&self, data: &'static mut [u8], write_len: u8, read_len: u8) -> bool {
+        self.set_master_slave_address(self.slave_addr.get(), false);
 
         self.master_put_data(data[0]);
 
@@ -180,7 +191,7 @@ impl I2C {
 
         if !success { return false; }
 
-        self.set_master_slave_address(addr, true);
+        self.set_master_slave_address(self.slave_addr.get(), true);
 
         self.master_control(I2C_MASTER_CMD_BURST_RECEIVE_START);
 
@@ -209,27 +220,27 @@ impl I2C {
     }
 
     fn set_master_slave_address(&self, addr: u8, receive: bool) {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         regs.msa.set(((addr as u32) << 1) | (receive as u32));
     }
 
     fn master_put_data(&self, data: u8) {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         regs.mdr.set(data as u32);
     }
 
     fn master_get_data(&self) -> u32 {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         regs.mdr.get()
     }
 
     fn master_bus_busy(&self) -> bool {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         (regs.mstat_mctrl.get() & I2C_MSTAT_BUSBSY) != 0
     }
 
     fn master_busy(&self) -> bool {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         (regs.mstat_mctrl.get() & I2C_MSTAT_BUSY) != 0
     }
 
@@ -256,7 +267,7 @@ impl I2C {
     }
 
     fn master_control(&self, cmd: u32) {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         regs.mstat_mctrl.set(cmd);
     }
 
@@ -271,7 +282,7 @@ impl I2C {
     }
 
     fn master_err(&self) -> u32 {
-        let regs: &I2CRegisters = unsafe { &*self.regs };
+        let regs: &Registers = unsafe { &*self.regs };
         let err = regs.mstat_mctrl.get();
 
         // If the master is busy there is not error to report
@@ -301,14 +312,17 @@ impl hil::i2c::I2CMaster for I2C {
     }
 
     fn write(&self, addr: u8, data: &'static mut [u8], len: u8) {
-        self.write(addr, data, len);
+        self.slave_addr.set(addr);
+        self.write(data, len);
     }
 
     fn read(&self, addr: u8, data: &'static mut [u8], len: u8) {
-        self.read(addr, data, len);
+        self.slave_addr.set(addr);
+        self.read(data, len);
     }
 
     fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) {
-        self.write_read(addr, data, write_len, read_len);
+        self.slave_addr.set(addr);
+        self.write_read(data, write_len, read_len);
     }
 }
