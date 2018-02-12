@@ -1,6 +1,11 @@
 use prcm;
 use kernel::common::VolatileCell;
 
+pub const I2C_MCR_MFE: u32 = 0x10;
+pub const I2C_MCTRL_RUN: u32 = 0x1;
+
+pub const MCU_CLOCK: u32 = 48_000_000;
+
 #[repr(C)]
 pub struct I2CRegisters {
     pub soar: VolatileCell<u32>,
@@ -34,5 +39,27 @@ impl I2C {
         prcm::Power::enable_domain(prcm::PowerDomain::Serial);
         while !prcm::Power::is_enabled(prcm::PowerDomain::Serial) { };
         prcm::Clock::enable_i2c();
+
+        self.configure(true);
+    }
+
+    fn configure(&self, fast: bool) {
+        self.master_enable();
+
+        let freq;
+        if fast { freq = 400_000; } else { freq = 100_000; }
+
+        // Compute SCL (serial clock) period
+        let tpr = ((MCU_CLOCK + (2 * 10 * freq) - 1) / (2 * 10 * freq)) - 1;
+        let regs: &I2CRegisters = unsafe { &*self.regs };
+        regs.mtpr.set(tpr);
+    }
+
+    fn master_enable(&self) {
+        let regs: &I2CRegisters = unsafe { &*self.regs };
+        // Set as master
+        regs.mcr.set(regs.mcr.get() | I2C_MCR_MFE);
+        // Enable master to transfer/receive data
+        regs.mstat_mctrl.set(I2C_MCTRL_RUN);
     }
 }
