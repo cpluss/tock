@@ -61,6 +61,10 @@ impl GPIOPin {
             client.fired(self.client_data.get());
         });
     }
+
+    pub fn iocfg(&self) -> &ioc::IocfgPin {
+        &ioc::IOCFG[self.pin]
+    }
 }
 
 impl hil::gpio::PinCtl for GPIOPin {
