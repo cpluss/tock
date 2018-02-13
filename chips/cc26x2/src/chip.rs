@@ -1,5 +1,5 @@
 use cortexm4::{self, nvic};
-use cc26xx::gpio;
+use cc26xx::{gpio,rtc};
 use kernel;
 use cc26xx::peripheral_interrupts::*;
 
@@ -35,6 +35,7 @@ impl kernel::Chip for Cc26X2 {
             while let Some(interrupt) = nvic::next_pending() {
                 match interrupt {
                     GPIO => gpio::PORT.handle_interrupt(),
+                    AON_RTC => rtc::RTC.handle_interrupt(),
                     // AON Programmable interrupt
                     // We need to ignore JTAG events since some debuggers emit these
                     AON_PROG => (),
