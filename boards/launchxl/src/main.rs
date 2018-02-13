@@ -34,6 +34,7 @@ pub struct Platform {
     gpio: &'static capsules::gpio::GPIO<'static, cc26xx::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, cc26xx::gpio::GPIOPin>,
     button: &'static capsules::button::Button<'static, cc26xx::gpio::GPIOPin>,
+    console: &'static capsules::console::Console<'static, cc26x2::uart::UART>,
     alarm: &'static capsules::alarm::AlarmDriver<
         'static,
         capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
@@ -47,6 +48,7 @@ impl kernel::Platform for Platform {
         F: FnOnce(Option<&kernel::Driver>) -> R,
     {
         match driver_num {
+            capsules::console::DRIVER_NUM => f(Some(self.console)),
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
             capsules::button::DRIVER_NUM => f(Some(self.button)),
@@ -117,6 +119,23 @@ pub unsafe fn reset_handler() {
         btn.set_client(button);
     }
 
+    cc26x2::uart::UART0.set_pins(&cc26xx::gpio::PORT[3], &cc26xx::gpio::PORT[2]);
+    let console = static_init!(
+        capsules::console::Console<cc26x2::uart::UART>,
+        capsules::console::Console::new(
+            &cc26x2::uart::UART0,
+            115200,
+            &mut capsules::console::WRITE_BUF,
+            kernel::Grant::create()
+        )
+    );
+    kernel::hil::uart::UART::set_client(&cc26x2::uart::UART0, console);
+    console.initialize();
+
+    // Attach the kernel debug interface to this console
+    let kc = static_init!(capsules::console::App, capsules::console::App::default());
+    kernel::debug::assign_console_driver(Some(console), kc);
+
     // Setup for remaining GPIO pins
     let gpio_pins = static_init!(
         [&'static cc26xx::gpio::GPIOPin; 22],
@@ -186,12 +205,14 @@ pub unsafe fn reset_handler() {
         gpio,
         led,
         button,
+        console,
         alarm,
         rng,
     };
 
     let mut chip = cc26x2::chip::Cc26X2::new();
 
+    println!("Initialization complete. Entering main loop");
     extern "C" {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;
