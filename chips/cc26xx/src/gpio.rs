@@ -86,6 +86,9 @@ impl hil::gpio::Pin for GPIOPin {
     fn make_input(&self) {
         self.enable_gpio();
         ioc::IOCFG[self.pin].enable_input();
+        // Disable data output
+        let regs: &GpioRegisters = unsafe { &*self.regs };
+        regs.doe.set(regs.doe.get() & !self.pin_mask);
     }
 
     fn disable(&self) {
