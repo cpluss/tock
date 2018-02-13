@@ -8,6 +8,19 @@
 use kernel::common::regs::ReadWrite;
 use kernel::hil;
 
+pub const IOC_PULL_CTL: u8 = 13;
+pub const IOC_IE: u8 = 29;
+pub const IOC_EDGE_DET: u8 = 16;
+pub const IOC_EDGE_IRQ_EN: u8 = 18;
+
+pub const IOC_UART0_RX_ID: u32 = 0xF;
+pub const IOC_UART0_TX_ID: u32 = 0x10;
+pub const IOC_I2C_MSSDA: u32 = 0xD;
+pub const IOC_I2C_MSSCL: u32 = 0xE;
+
+pub const IOC_IOMODE_OPEN_DRAIN_NORMAL: u32 = 0x4000000;
+pub const IOC_IOPULL_UP: u32 = 0x4000;
+
 #[repr(C)]
 pub struct IocRegisters {
     iocfg: [ReadWrite<u32, IoConfiguration::Register>; 32],
@@ -55,6 +68,44 @@ impl IocfgPin {
         // In order to configure the pin for GPIO we need to clear
         // the lower 6 bits.
         pin_ioc.write(IoConfiguration::PORT_ID::GPIO);
+    }
+
+    pub fn enable_uart_rx(&self) {
+        let regs: &IocRegisters = unsafe { &*IOC_BASE };
+        let pin_ioc = &regs.iocfg[self.pin];
+
+        pin_ioc.set(pin_ioc.get() | IOC_UART0_RX_ID);
+        self.set_input_mode(hil::gpio::InputMode::PullNone);
+        self.enable_input();
+    }
+
+    pub fn enable_uart_tx(&self) {
+        let regs: &IocRegisters = unsafe { &*IOC_BASE };
+        let pin_ioc = &regs.iocfg[self.pin];
+
+        pin_ioc.set(pin_ioc.get() | IOC_UART0_TX_ID);
+        self.set_input_mode(hil::gpio::InputMode::PullNone);
+        self.enable_output();
+    }
+
+    pub fn enable_i2c_sda(&self) {
+        self.set_input_mode(hil::gpio::InputMode::PullNone);
+
+        let regs: &IocRegisters = unsafe { &*IOC_BASE };
+        let pin_ioc = &regs.iocfg[self.pin];
+
+        pin_ioc.set(IOC_I2C_MSSDA | IOC_IOMODE_OPEN_DRAIN_NORMAL | IOC_IOPULL_UP); // This will reset previous config
+        self.enable_input();
+    }
+
+    pub fn enable_i2c_scl(&self) {
+        self.set_input_mode(hil::gpio::InputMode::PullNone);
+
+        let regs: &IocRegisters = unsafe { &*IOC_BASE };
+        let pin_ioc = &regs.iocfg[self.pin];
+
+        pin_ioc.set(IOC_I2C_MSSCL | IOC_IOMODE_OPEN_DRAIN_NORMAL | IOC_IOPULL_UP); // This will reset previous config
+        self.enable_input();
     }
 
     pub fn set_input_mode(&self, mode: hil::gpio::InputMode) {
