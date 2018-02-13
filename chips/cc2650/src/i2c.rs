@@ -1,5 +1,8 @@
 use prcm;
+use ioc;
+use gpio;
 use kernel::hil;
+use kernel::hil::gpio::Pin;
 use core::cell::Cell;
 use kernel::common::VolatileCell;
 
@@ -24,7 +27,18 @@ pub const I2C_MSTAT_ADRACK_N: u32 = 0x4;
 pub const I2C_MSTAT_DATACK_N_M: u32 = 0x8;
 pub const I2C_MSTAT_ADRACK_N_M: u32 = 0x4;
 
+pub const BOARD_IO_SDA: usize = 0x5;
+pub const BOARD_IO_SCL: usize = 0x6;
+pub const BOARD_IO_SDA_HP: usize = 0x8;
+pub const BOARD_IO_SCL_HP: usize = 0x9;
+
 pub const MCU_CLOCK: u32 = 48_000_000;
+
+#[derive(PartialEq)]
+pub enum I2cInterface {
+    INTERFACE0 = 0,
+    INTERFACE1 = 1,
+}
 
 #[repr(C)]
 pub struct Registers {
@@ -53,6 +67,7 @@ pub const I2C_BASE: *mut Registers = 0x4000_2000 as *mut Registers;
 pub struct I2C {
     regs: *mut Registers,
     slave_addr: Cell<u8>,
+    interface: Cell<u8>,
     client: Cell<Option<&'static hil::i2c::I2CHwMasterClient>>,
 }
 
@@ -61,6 +76,7 @@ impl I2C {
         I2C {
             regs: I2C_BASE as *mut Registers,
             slave_addr: Cell::new(0),
+            interface: Cell::new(I2cInterface::INTERFACE0 as u8),
             client: Cell::new(None),
         }
     }
@@ -91,6 +107,12 @@ impl I2C {
         regs.mcr.set(regs.mcr.get() | I2C_MCR_MFE);
         // Enable master to transfer/receive data
         regs.mstat_mctrl.set(I2C_MCTRL_RUN);
+    }
+
+    fn master_disable(&self) {
+        let regs: &Registers = unsafe { &*self.regs };
+        regs.mstat_mctrl.set(0);
+        regs.mcr.set(regs.mcr.get() & !I2C_MCR_MFE);
     }
 
     pub fn write_single(&self, data: u8) -> bool {
@@ -298,7 +320,7 @@ impl I2C {
         }
     }
 
-    fn accessible() -> bool {
+    fn accessible(&self) -> bool {
         if !prcm::Power::is_enabled(prcm::PowerDomain::Serial) {
             return false;
         }
@@ -308,6 +330,40 @@ impl I2C {
         }
 
         true
+    }
+
+    fn select(&self, new_interface: I2cInterface, addr: u8) {
+        self.slave_addr.set(addr);
+
+        if !self.accessible() {
+            self.wakeup();
+        }
+
+        let interface= new_interface as u8;
+        if interface != self.interface.get() as u8 {
+            self.interface.set(interface);
+
+            self.master_disable();
+
+            if interface == I2cInterface::INTERFACE0 as u8 {
+                unsafe {
+                    ioc::IOCFG[BOARD_IO_SDA].enable_i2c_sda();
+                    ioc::IOCFG[BOARD_IO_SCL].enable_i2c_scl();
+                    gpio::PORT[BOARD_IO_SDA_HP].make_input();
+                    gpio::PORT[BOARD_IO_SCL_HP].make_input();
+                }
+            }
+            else if interface == I2cInterface::INTERFACE1 as u8 {
+                unsafe {
+                    ioc::IOCFG[BOARD_IO_SDA_HP].enable_i2c_sda();
+                    ioc::IOCFG[BOARD_IO_SCL_HP].enable_i2c_scl();
+                    gpio::PORT[BOARD_IO_SDA].make_input();
+                    gpio::PORT[BOARD_IO_SCL].make_input();
+                }
+            }
+
+            self.configure(true);
+        }
     }
 
 }
