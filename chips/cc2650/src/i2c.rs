@@ -38,6 +38,7 @@ pub const MCU_CLOCK: u32 = 48_000_000;
 pub enum I2cInterface {
     INTERFACE0 = 0,
     INTERFACE1 = 1,
+    NO_INTERFACE = 2,
 }
 
 #[repr(C)]
@@ -76,7 +77,7 @@ impl I2C {
         I2C {
             regs: I2C_BASE as *mut Registers,
             slave_addr: Cell::new(0),
-            interface: Cell::new(I2cInterface::INTERFACE0 as u8),
+            interface: Cell::new(I2cInterface::NO_INTERFACE as u8),
             client: Cell::new(None),
         }
     }
@@ -87,6 +88,11 @@ impl I2C {
         prcm::Clock::enable_i2c();
 
         self.configure(true);
+    }
+
+    #[allow(unused)]
+    pub fn shutdown(&self) {
+        // Not implemented
     }
 
     fn configure(&self, fast: bool) {
