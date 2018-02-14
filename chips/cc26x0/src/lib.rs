@@ -14,5 +14,6 @@ pub mod chip;
 pub mod crt1;
 pub mod i2c;
 pub mod sensor;
+pub mod hdc;
 
 pub use crt1::init;
