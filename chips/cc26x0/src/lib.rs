@@ -12,7 +12,6 @@ extern crate bitfield;
 
 pub mod chip;
 pub mod crt1;
-pub mod uart;
 pub mod i2c;
 
 pub use crt1::init;

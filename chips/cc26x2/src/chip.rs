@@ -3,12 +3,11 @@
 use cc26xx::gpio;
 use cc26xx::peripheral_interrupts::*;
 use cc26xx::rtc;
+use cc26xx::uart;
 use cortexm4::{self, nvic};
-use cc26xx::{gpio,rtc};
 use kernel;
 use cc26xx::peripheral_interrupts::*;
 
-use uart;
 use kernel;
 
 pub struct Cc26X2 {

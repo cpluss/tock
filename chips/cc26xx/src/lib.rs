@@ -13,4 +13,5 @@ pub mod ioc;
 pub mod prcm;
 pub mod ccfg;
 pub mod trng;
+pub mod uart;
 pub mod peripheral_interrupts;

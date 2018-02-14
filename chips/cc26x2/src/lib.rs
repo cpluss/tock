@@ -10,6 +10,5 @@ extern crate kernel;
 
 pub mod chip;
 pub mod crt1;
-pub mod uart;
 
 pub use crt1::init;
