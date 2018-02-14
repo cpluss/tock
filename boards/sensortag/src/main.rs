@@ -33,7 +33,7 @@ pub struct Platform {
     gpio: &'static capsules::gpio::GPIO<'static, cc26xx::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, cc26xx::gpio::GPIOPin>,
     button: &'static capsules::button::Button<'static, cc26xx::gpio::GPIOPin>,
-    console: &'static capsules::console::Console<'static, cc26x0::uart::UART>,
+    console: &'static capsules::console::Console<'static, cc26xx::uart::UART>,
     alarm: &'static capsules::alarm::AlarmDriver<
         'static,
         capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
@@ -118,17 +118,17 @@ pub unsafe fn reset_handler() {
         btn.set_client(button);
     }
 
-    cc26x0::uart::UART0.set_pins(&cc26xx::gpio::PORT[29], &cc26xx::gpio::PORT[28]);
+    cc26xx::uart::UART0.set_pins(&cc26xx::gpio::PORT[29], &cc26xx::gpio::PORT[28]);
     let console = static_init!(
-        capsules::console::Console<cc26x0::uart::UART>,
+        capsules::console::Console<cc26xx::uart::UART>,
         capsules::console::Console::new(
-            &cc26x0::uart::UART0,
+            &cc26xx::uart::UART0,
             115200,
             &mut capsules::console::WRITE_BUF,
             kernel::Grant::create()
         )
     );
-    kernel::hil::uart::UART::set_client(&cc26x0::uart::UART0, console);
+    kernel::hil::uart::UART::set_client(&cc26xx::uart::UART0, console);
     console.initialize();
 
     // Attach the kernel debug interface to this console

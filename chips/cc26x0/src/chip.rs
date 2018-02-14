@@ -1,8 +1,7 @@
 use cortexm3::{self, nvic};
-use cc26xx::{gpio,rtc};
+use cc26xx::{gpio,rtc,uart};
 use cc26xx::peripheral_interrupts::*;
 
-use uart;
 use kernel;
 
 pub struct Cc26x0 {

@@ -2,7 +2,6 @@ use core::fmt::{write, Arguments, Write};
 use kernel::debug;
 use kernel::hil::led;
 use kernel::hil::uart::{self, UART};
-use cc26x2;
 use cc26xx;
 
 pub struct Writer {
@@ -13,7 +12,7 @@ pub static mut WRITER: Writer = Writer { initialized: false };
 
 impl Write for Writer {
     fn write_str(&mut self, s: &str) -> ::core::fmt::Result {
-        let uart = unsafe { &mut cc26x2::uart::UART0 };
+        let uart = unsafe { &mut cc26xx::uart::UART0 };
         if !self.initialized {
             self.initialized = true;
             uart.init(uart::UARTParams {
