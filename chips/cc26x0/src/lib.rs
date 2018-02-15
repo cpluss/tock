@@ -4,7 +4,7 @@
 #![crate_type = "rlib"]
 extern crate cortexm3;
 #[allow(unused_imports)]
-#[macro_use(debug)]
+#[macro_use(debug,debug_verbose)]
 extern crate kernel;
 extern crate cc26xx;
 
@@ -13,6 +13,7 @@ extern crate bitfield;
 pub mod chip;
 pub mod crt1;
 pub mod i2c;
+pub mod radio;
 pub mod sensor;
 pub mod hdc;
 pub mod mpu;
