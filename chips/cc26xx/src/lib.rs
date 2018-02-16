@@ -14,4 +14,5 @@ pub mod prcm;
 pub mod ccfg;
 pub mod trng;
 pub mod uart;
+pub mod timer;
 pub mod peripheral_interrupts;
