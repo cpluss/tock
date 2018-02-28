@@ -20,5 +20,7 @@ pub mod uart;
 pub mod timer;
 pub mod peripheral_interrupts;
 
+// Since the setup code is converted from C -> Rust, we
+// ignore side effects from the conversion (unused vars & muts).
 #[allow(unused_variables, unused_mut)]
 pub mod setup;
