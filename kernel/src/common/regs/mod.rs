@@ -1,4 +1,38 @@
-//! Implementation of registers and bitfields
+//! Implementation of registers and bitfields.
+//!
+//! Allows register maps to be specified like this:
+//!
+//! ```rust
+//! use common::regs::{ReadOnly, ReadWrite, WriteOnly};
+//!
+//! #[repr(C)]
+//! struct Registers {
+//!     // Control register: read-write
+//!     cr: ReadWrite<u32, Control::Register>,
+//!     // Status register: read-only
+//!     s: ReadOnly<u32, Status::Register>,
+//! }
+//! ```
+//!
+//! and register fields and definitions to look like:
+//!
+//! ```rust
+//! register_bitfields![u32,
+//!     Status [
+//!         TXCOMPLETE  OFFSET(0) NUMBITS(1) [],
+//!         TXINTERRUPT OFFSET(1) NUMBITS(1) [],
+//!         RXCOMPLETE  OFFSET(2) NUMBITS(1) [],
+//!         RXINTERRUPT OFFSET(3) NUMBITS(1) [],
+//!         MODE        OFFSET(4) NUMBITS(3) [
+//!             FullDuplex = 0,
+//!             HalfDuplex = 1,
+//!         Loopback = 2,
+//!             Disabled = 3
+//!         ],
+//!         ERRORCOUNT OFFSET(6) NUMBITS(3) []
+//!     ]
+//! ];
+//! ```
 
 #[macro_use]
 pub mod macros;
@@ -6,6 +40,7 @@ pub mod macros;
 use core::marker::PhantomData;
 use core::ops::{Add, AddAssign, BitAnd, BitOr, Not, Shl, Shr};
 
+/// IntLike properties needed to read/write/modify a register.
 pub trait IntLike
     : BitAnd<Output = Self>
     + BitOr<Output = Self>
@@ -34,20 +69,24 @@ impl IntLike for u32 {
     }
 }
 
+/// Descriptive name for each register.
 pub trait RegisterLongName {}
 
 impl RegisterLongName for () {}
 
+/// Read/Write registers.
 pub struct ReadWrite<T: IntLike, R: RegisterLongName = ()> {
     value: T,
     associated_register: PhantomData<R>,
 }
 
+/// Read-only registers.
 pub struct ReadOnly<T: IntLike, R: RegisterLongName = ()> {
     value: T,
     associated_register: PhantomData<R>,
 }
 
+/// Write-only registers.
 pub struct WriteOnly<T: IntLike, R: RegisterLongName = ()> {
     value: T,
     associated_register: PhantomData<R>,
@@ -149,6 +188,7 @@ impl<T: IntLike, R: RegisterLongName> WriteOnly<T, R> {
     }
 }
 
+/// Specific section of a register.
 #[derive(Copy, Clone)]
 pub struct Field<T: IntLike, R: RegisterLongName> {
     mask: T,
@@ -199,6 +239,7 @@ impl<R: RegisterLongName> Field<u32, R> {
     }
 }
 
+/// Values for the specific register fields.
 // For the FieldValue, the masks and values are shifted into their actual location in the register
 #[derive(Copy, Clone)]
 pub struct FieldValue<T: IntLike, R: RegisterLongName> {
@@ -219,6 +260,12 @@ impl<R: RegisterLongName> FieldValue<u8, R> {
     }
 }
 
+impl<R: RegisterLongName> From<FieldValue<u8, R>> for u8 {
+    fn from(val: FieldValue<u8, R>) -> u8 {
+        val.value
+    }
+}
+
 impl<R: RegisterLongName> FieldValue<u16, R> {
     pub const fn new(mask: u16, shift: u32, value: u16) -> Self {
         FieldValue {
@@ -229,6 +276,12 @@ impl<R: RegisterLongName> FieldValue<u16, R> {
     }
 }
 
+impl<R: RegisterLongName> From<FieldValue<u16, R>> for u16 {
+    fn from(val: FieldValue<u16, R>) -> u16 {
+        val.value
+    }
+}
+
 impl<R: RegisterLongName> FieldValue<u32, R> {
     pub const fn new(mask: u32, shift: u32, value: u32) -> Self {
         FieldValue {
@@ -236,6 +289,12 @@ impl<R: RegisterLongName> FieldValue<u32, R> {
             value: (value << shift) & (mask << shift),
             associated_register: PhantomData,
         }
+    }
+}
+
+impl<R: RegisterLongName> From<FieldValue<u32, R>> for u32 {
+    fn from(val: FieldValue<u32, R>) -> u32 {
+        val.value
     }
 }
 
