@@ -1,4 +1,4 @@
-use core::fmt::{write, Arguments, Write};
+use core::fmt::{Arguments, Write};
 use kernel::debug;
 use kernel::hil::led;
 use kernel::hil::uart::{self, UART};
@@ -51,9 +51,9 @@ macro_rules! println {
 #[lang = "panic_fmt"]
 #[no_mangle]
 pub unsafe extern "C" fn rust_begin_unwind(
-    _args: Arguments,
-    _file: &'static str,
-    _line: usize,
+    args: Arguments,
+    file: &'static str,
+    line: u32,
 ) -> ! {
     // 6 = Red led, 7 = Green led
     const LED_PIN: usize = 6;
