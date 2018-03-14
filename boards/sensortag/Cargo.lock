@@ -18,7 +18,6 @@ dependencies = [
  "cc26xx 0.1.0",
  "cortexm3 0.1.0",
  "kernel 0.1.0",
- "nrf5x 0.1.0",
 ]
 
 [[package]]
@@ -48,13 +47,6 @@ name = "kernel"
 version = "0.1.0"
 
 [[package]]
-name = "nrf5x"
-version = "0.1.0"
-dependencies = [
- "kernel 0.1.0",
-]
-
-[[package]]
 name = "sensortag"
 version = "0.1.0"
 dependencies = [
@@ -63,7 +55,6 @@ dependencies = [
  "cc26xx 0.1.0",
  "cortexm3 0.1.0",
  "kernel 0.1.0",
- "nrf5x 0.1.0",
 ]
 
 [metadata]

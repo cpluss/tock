@@ -8,7 +8,3 @@ cortexm3 = { path = "../../arch/cortex-m3" }
 kernel = { path = "../../kernel" }
 bitfield = "0.11.0"
 cc26xx = { path = "../cc26xx" }
-
-[dependencies.nrf5x]
-path = "../nrf5x"
-features = ["nrf52"]
