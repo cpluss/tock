@@ -6,9 +6,6 @@ use cc26xx::rtc;
 use cc26xx::uart;
 use cortexm4::{self, nvic};
 use kernel;
-use cc26xx::peripheral_interrupts::*;
-
-use kernel;
 
 pub struct Cc26X2 {
     mpu: cortexm4::mpu::MPU,
