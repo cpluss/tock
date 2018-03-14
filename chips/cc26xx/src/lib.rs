@@ -7,6 +7,9 @@
 #[macro_use]
 extern crate kernel;
 
+#[macro_use]
+extern crate bitfield;
+
 pub mod aon;
 pub mod aux;
 pub mod rtc;
@@ -17,6 +20,7 @@ pub mod prcm;
 pub mod ccfg;
 pub mod trng;
 pub mod uart;
+pub mod radio;
 pub mod timer;
 pub mod peripheral_interrupts;
 
