@@ -5,8 +5,6 @@
 extern crate capsules;
 extern crate compiler_builtins;
 
-extern crate nrf5x;
-
 extern crate cc26x0;
 extern crate cc26xx;
 
@@ -212,7 +210,6 @@ pub unsafe fn reset_handler() {
 
     // Use BLE
     radio::RFC.set_client(&radio::BLE);
-    radio::BLE.power_up();
     let ble_radio = static_init!(
         capsules::ble_advertising_driver::BLE<
             'static,
