@@ -32,7 +32,7 @@ static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, Non
 static mut APP_MEMORY: [u8; 10240] = [0; 10240];
 
 pub struct Platform {
-    ble_radio: &'static nrf5x::ble_advertising_driver::BLE<
+    ble_radio: &'static capsules::ble_advertising_driver::BLE<
         'static,
         cc26x0::radio::ble::Ble,
         capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
@@ -59,7 +59,7 @@ impl kernel::Platform for Platform {
             capsules::led::DRIVER_NUM => f(Some(self.led)),
             capsules::button::DRIVER_NUM => f(Some(self.button)),
             capsules::alarm::DRIVER_NUM => f(Some(self.alarm)),
-            nrf5x::ble_advertising_driver::DRIVER_NUM => f(Some(self.ble_radio)),
+            capsules::ble_advertising_driver::DRIVER_NUM => f(Some(self.ble_radio)),
             capsules::rng::DRIVER_NUM => f(Some(self.rng)),
             _ => f(None),
         }
@@ -214,35 +214,27 @@ pub unsafe fn reset_handler() {
     radio::RFC.set_client(&radio::BLE);
     radio::BLE.power_up();
     let ble_radio = static_init!(
-        nrf5x::ble_advertising_driver::BLE<
+        capsules::ble_advertising_driver::BLE<
             'static,
             cc26x0::radio::ble::Ble,
             capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
         >,
-        nrf5x::ble_advertising_driver::BLE::new(
+        capsules::ble_advertising_driver::BLE::new(
             &mut cc26x0::radio::BLE,
             kernel::Grant::create(),
-            &mut nrf5x::ble_advertising_driver::BUF,
+            &mut capsules::ble_advertising_driver::BUF,
             ble_radio_virtual_alarm
         )
     );
-    nrf5x::ble_advertising_hil::BleAdvertisementDriver::set_receive_client(
+    kernel::hil::ble_advertising::BleAdvertisementDriver::set_receive_client(
         &cc26x0::radio::BLE,
         ble_radio,
     );
-    nrf5x::ble_advertising_hil::BleAdvertisementDriver::set_transmit_client(
+    kernel::hil::ble_advertising::BleAdvertisementDriver::set_transmit_client(
         &cc26x0::radio::BLE,
         ble_radio,
     );
     ble_radio_virtual_alarm.set_client(ble_radio);
-
-    /*
-    loop {
-        radio::BLE.advertise();
-        for _i in 0..960000 {
-            asm!("nop");
-        }
-    }*/
 
     let sensortag = Platform {
         ble_radio,
