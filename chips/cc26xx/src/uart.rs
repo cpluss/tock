@@ -1,11 +1,10 @@
 use core::cell::Cell;
+use gpio;
+use kernel;
 use kernel::common::VolatileCell;
 use kernel::hil::gpio::Pin;
 use kernel::hil::uart;
-use kernel;
-
 use prcm;
-use gpio;
 
 pub const UART_CTL_UARTEN: u32 = 1;
 pub const UART_CTL_TXE: u32 = 1 << 8;
@@ -15,8 +14,8 @@ pub const UART_FR_BUSY: u32 = 1 << 3;
 pub const UART_INT_ALL: u32 = 0x7F2;
 pub const UART_INT_RX: u32 = 0x010;
 pub const UART_INT_RT: u32 = 0x040;
-pub const UART_FIFO_TX7_8: u32 = 0x04;          // Transmit interrupt at 7/8 Full
-pub const UART_FIFO_RX4_8: u32 = 0x10;          // Receive interrupt at 1/2 Full
+pub const UART_FIFO_TX7_8: u32 = 0x04; // Transmit interrupt at 7/8 Full
+pub const UART_FIFO_RX4_8: u32 = 0x10; // Receive interrupt at 1/2 Full
 pub const UART_FR_TXFF: u32 = 0x20;
 pub const UART_CONF_WLEN_8: u32 = 0x60;
 pub const UART_CONF_BAUD_RATE: u32 = 115200;
@@ -72,9 +71,9 @@ impl UART {
         let ctl_val = UART_CTL_UARTEN | UART_CTL_TXE | UART_CTL_RXE;
 
         /*
-        * Make sure the TX pin is output / high before assigning it to UART control
-        * to avoid falling edge glitches
-        */
+         * Make sure the TX pin is output / high before assigning it to UART control
+         * to avoid falling edge glitches
+         */
         self.tx_pin.unwrap().make_output();
         self.tx_pin.unwrap().set();
 
@@ -101,7 +100,7 @@ impl UART {
 
     fn power_and_clock(&self) {
         prcm::Power::enable_domain(prcm::PowerDomain::Serial);
-        while !prcm::Power::is_enabled(prcm::PowerDomain::Serial) { };
+        while !prcm::Power::is_enabled(prcm::PowerDomain::Serial) {}
         prcm::Clock::enable_uart_run();
     }
 
@@ -128,7 +127,8 @@ impl UART {
     pub fn disable(&self) {
         self.fifo_disable();
         let regs = unsafe { &*self.regs };
-        regs.ctl.set(regs.ctl.get() & !(UART_CTL_RXE | UART_CTL_TXE | UART_CTL_UARTEN));
+        regs.ctl
+            .set(regs.ctl.get() & !(UART_CTL_RXE | UART_CTL_TXE | UART_CTL_UARTEN));
     }
 
     pub fn disable_interrupts(&self) {
@@ -190,7 +190,9 @@ impl kernel::hil::uart::UART for UART {
 
     #[allow(unused)]
     fn transmit(&self, tx_data: &'static mut [u8], tx_len: usize) {
-        if tx_len == 0 { return; }
+        if tx_len == 0 {
+            return;
+        }
 
         for i in 0..tx_len {
             self.send_byte(tx_data[i]);

@@ -180,7 +180,9 @@ unsafe extern "C" fn setup_sign_extend_vddr_trim_value(mut ui32vddr_trim_val: u3
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn setup_after_cold_reset_wakeup_from_shut_down_cfg1(mut ccfg_mode_conf_reg: u32) {
+pub unsafe extern "C" fn setup_after_cold_reset_wakeup_from_shut_down_cfg1(
+    mut ccfg_mode_conf_reg: u32,
+) {
     let mut i32vddr_sleep_trim: i32;
     let mut i32vddr_sleep_delta: i32;
     i32vddr_sleep_trim = setup_sign_extend_vddr_trim_value(
@@ -264,7 +266,9 @@ unsafe extern "C" fn sys_ctrl_aon_sync() {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn setup_after_cold_reset_wakeup_from_shut_down_cfg3(mut ccfg_mode_conf_reg: u32) {
+pub unsafe extern "C" fn setup_after_cold_reset_wakeup_from_shut_down_cfg3(
+    mut ccfg_mode_conf_reg: u32,
+) {
     let mut _current_block;
     let mut fcfg1osc_conf: u32;
     let mut ui32trim: u32;
@@ -557,7 +561,9 @@ pub unsafe extern "C" fn setup_get_trim_for_radc_ext_cfg(mut ui32fcfg1revision: 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn setup_get_trim_for_rc_osc_lf_ibias_trim(mut ui32fcfg1revision: u32) -> u32 {
+pub unsafe extern "C" fn setup_get_trim_for_rc_osc_lf_ibias_trim(
+    mut ui32fcfg1revision: u32,
+) -> u32 {
     let mut trim_for_rc_osc_lf_ibias_trim_value: u32 = 0u32;
     if ui32fcfg1revision >= 0x22u32 {
         trim_for_rc_osc_lf_ibias_trim_value =
@@ -572,9 +578,9 @@ pub unsafe extern "C" fn setup_get_trim_for_xosc_lf_regulator_and_cmirrwr_ratio(
 ) -> u32 {
     let mut trim_for_xosc_lf_regulator_and_cmirrwr_ratio_value: u32 = 0u32;
     if ui32fcfg1revision >= 0x22u32 {
-        trim_for_xosc_lf_regulator_and_cmirrwr_ratio_value = ((*((0x50001000i32 + 0x38ci32) as (*mut usize))
-            & (0x6000000i32 | 0x1e00000i32) as (usize))
-            >> 21i32) as (u32);
+        trim_for_xosc_lf_regulator_and_cmirrwr_ratio_value =
+            ((*((0x50001000i32 + 0x38ci32) as (*mut usize))
+                & (0x6000000i32 | 0x1e00000i32) as (usize)) >> 21i32) as (u32);
     }
     trim_for_xosc_lf_regulator_and_cmirrwr_ratio_value
 }

@@ -17,12 +17,11 @@
 
 // RFC Commands are located at the bottom
 use self::rfc_commands::*;
+use core::cell::Cell;
+use kernel::common::VolatileCell;
+use kernel::common::regs::{ReadOnly, ReadWrite};
 use prcm;
 use rtc;
-
-use kernel::common::regs::{ReadOnly, ReadWrite};
-use kernel::common::VolatileCell;
-use core::cell::Cell;
 
 #[repr(C)]
 pub struct RfcBellRegisters {
@@ -168,7 +167,7 @@ impl RFCore {
     pub fn set_mode(&self, mode: RfcMode) {
         let rf_mode = match mode {
             RfcMode::BLE => 0x01,
-            _ => panic!("No other mode than BLE is currently supported for RF!\r")
+            _ => panic!("No other mode than BLE is currently supported for RF!\r"),
         };
 
         // Redirect power to the correct module
@@ -201,37 +200,30 @@ impl RFCore {
         bell_regs.rf_ack_interrupt_flag.set(0);
 
         // All interrupts to Cpe0 except INTERNAL_ERROR which is routed to Cpe1
-        bell_regs.rf_cpe_interrupt_vector_sel.write(RFCpeInterrupts::INTERNAL_ERROR::SET);
+        bell_regs
+            .rf_cpe_interrupt_vector_sel
+            .write(RFCpeInterrupts::INTERNAL_ERROR::SET);
         // Enable INTERNAL_ERROR and LOAD_DONE
         bell_regs.rf_cpe_interrupt_enable.write(
-            RFCpeInterrupts::INTERNAL_ERROR::SET
-                + RFCpeInterrupts::COMMAND_DONE::SET
-                + RFCpeInterrupts::BOOT_DONE::SET
+            RFCpeInterrupts::INTERNAL_ERROR::SET + RFCpeInterrupts::COMMAND_DONE::SET
+                + RFCpeInterrupts::BOOT_DONE::SET,
         );
         // Clear interrupt flags that might've been set by the init commands
         bell_regs.rf_cpe_interrupt_flags.set(0x00);
 
-        self.ensure_ok(|| {
-            self.send_direct(&DirectCommand::new(RFC_CMD0, 0x10 | 0x40))
-        });
+        self.ensure_ok(|| self.send_direct(&DirectCommand::new(RFC_CMD0, 0x10 | 0x40)));
 
         // Request the bus
-        self.ensure_ok(|| {
-            self.send_direct(&DirectCommand::new(RFC_BUS_REQUEST, 1))
-        });
+        self.ensure_ok(|| self.send_direct(&DirectCommand::new(RFC_BUS_REQUEST, 1)));
 
         // Send a ping command to verify that the core is ready and alive
-        self.ensure_ok(|| {
-            self.send_direct(&DirectCommand::new(RFC_PING, 0))
-        });
+        self.ensure_ok(|| self.send_direct(&DirectCommand::new(RFC_PING, 0)));
     }
 
     pub fn setup(&self, reg_override: u32) {
         let mode = self.mode
             .get()
-            .unwrap_or_else(|| {
-                panic!("No RF mode selected, can not setup.\r")
-            });
+            .unwrap_or_else(|| panic!("No RF mode selected, can not setup.\r"));
 
         let setup_cmd = RfcCommandRadioSetup {
             command_no: RFC_SETUP,
@@ -279,7 +271,8 @@ impl RFCore {
     }
 
     pub fn ensure_ok<F>(&self, closure: F)
-        where F: Fn() -> RfcResult
+    where
+        F: Fn() -> RfcResult,
     {
         match closure() {
             RfcResult::Error(status) => panic!("RFC error occurred, status=0x{:x}\r", status),
@@ -360,7 +353,9 @@ impl RFCore {
                 bell_regs.rf_ack_interrupt_flag.set(0);
             }
             RfcInterrupt::Cpe0 => {
-                let command_done = bell_regs.rf_cpe_interrupt_flags.is_set(RFCpeInterrupts::COMMAND_DONE);
+                let command_done = bell_regs
+                    .rf_cpe_interrupt_flags
+                    .is_set(RFCpeInterrupts::COMMAND_DONE);
                 bell_regs.rf_cpe_interrupt_flags.set(0);
 
                 if command_done {

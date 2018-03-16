@@ -1,8 +1,8 @@
+use cc26xx;
 use core::fmt::{Arguments, Write};
 use kernel::debug;
 use kernel::hil::led;
 use kernel::hil::uart::{self, UART};
-use cc26xx;
 
 pub struct Writer {
     initialized: bool,
@@ -50,11 +50,7 @@ macro_rules! println {
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub unsafe extern "C" fn rust_begin_unwind(
-    args: Arguments,
-    file: &'static str,
-    line: u32,
-) -> ! {
+pub unsafe extern "C" fn rust_begin_unwind(args: Arguments, file: &'static str, line: u32) -> ! {
     // 6 = Red led, 7 = Green led
     const LED_PIN: usize = 6;
 

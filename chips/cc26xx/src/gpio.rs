@@ -6,10 +6,10 @@
 
 use core::cell::Cell;
 use core::ops::{Index, IndexMut};
+use ioc;
 use kernel::common::regs::{ReadWrite, WriteOnly};
 use kernel::hil;
 use prcm;
-use ioc;
 
 const NUM_PINS: usize = 32;
 const GPIO_BASE: *const GpioRegisters = 0x4002_2000 as *const GpioRegisters;

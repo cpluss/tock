@@ -1,7 +1,7 @@
-use core::fmt::{write, Arguments, Write};
-use kernel::hil::uart::{self, UART};
-use kernel::hil::gpio::Pin;
 use cc26xx;
+use core::fmt::{write, Arguments, Write};
+use kernel::hil::gpio::Pin;
+use kernel::hil::uart::{self, UART};
 
 pub struct Writer {
     initialized: bool,
@@ -54,7 +54,6 @@ pub unsafe extern "C" fn rust_begin_unwind(
     _file: &'static str,
     _line: usize,
 ) -> ! {
-
     let writer = &mut WRITER;
     let _ = writer.write_fmt(format_args!(
         "\r\nKernel panic at {}:{}:\r\n\t\"",

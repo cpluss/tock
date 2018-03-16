@@ -2,15 +2,13 @@
 //!     Manages bluetooth.
 //!
 
-use core::cell::Cell;
 use self::ble_commands::*;
-use osc;
-use radio::rfc::{self, rfc_commands};
-
+use core::cell::Cell;
 use kernel;
+use kernel::hil::ble_advertising::{self, RadioChannel};
+use osc;
 use radio::ble::ble_commands::BleAdvertise;
-
-use kernel::hil::ble_advertising::{self,RadioChannel};
+use radio::rfc::{self, rfc_commands};
 
 static mut BLE_OVERRIDES: [u32; 7] = [
     0x00364038 /* Synth: Set RTRIM (POTAILRESTRIM) to 6 */,
@@ -18,8 +16,7 @@ static mut BLE_OVERRIDES: [u32; 7] = [
     0xA47E0583 /* Synth: Set loop bandwidth after lock to 80 kHz (K2) */,
     0xEAE00603 /* Synth: Set loop bandwidth after lock to 80 kHz (K3, LSB) */,
     0x00010623 /* Synth: Set loop bandwidth after lock to 80 kHz (K3, MSB) */,
-    0x00456088 /* Adjust AGC reference level */,
-    0xFFFFFFFF /* End of override list */,
+    0x00456088 /* Adjust AGC reference level */, 0xFFFFFFFF /* End of override list */,
 ];
 
 /*
@@ -53,7 +50,7 @@ impl Ble {
 
     pub fn configure(&self) {
         if self.rfc.current_mode() == Some(rfc::RfcMode::BLE) {
-            return
+            return;
         }
 
         self.rfc.set_mode(rfc::RfcMode::BLE);
@@ -82,8 +79,11 @@ impl Ble {
         The payload is assembled be the Cortex-M0 radio MCU. We need to extract
         parts of the payload to correctly propagate them.
     */
-    unsafe fn replace_adv_payload_buffer(&self, buf: &'static mut [u8], len: usize)
-        -> &'static mut [u8] {
+    unsafe fn replace_adv_payload_buffer(
+        &self,
+        buf: &'static mut [u8],
+        len: usize,
+    ) -> &'static mut [u8] {
         // Extract the device address
         for (i, a) in buf.as_ref()[2..8].iter().enumerate() {
             DEVICE_ADDRESS[i] = *a;
@@ -106,7 +106,7 @@ impl Ble {
             RadioChannel::AdvertisingChannel37 => 37,
             RadioChannel::AdvertisingChannel38 => 38,
             RadioChannel::AdvertisingChannel39 => 39,
-            _ => panic!("Tried to advertise on a communication channel.\r")
+            _ => panic!("Tried to advertise on a communication channel.\r"),
         };
 
         unsafe {
@@ -117,7 +117,8 @@ impl Ble {
                 PACKET_BUF[i] = 0;
             }
 
-            let params: &mut BleAdvertiseParams = &mut *(BLE_PARAMS_BUF.as_mut_ptr() as *mut BleAdvertiseParams);
+            let params: &mut BleAdvertiseParams =
+                &mut *(BLE_PARAMS_BUF.as_mut_ptr() as *mut BleAdvertiseParams);
 
             params.device_address = &mut DEVICE_ADDRESS[0] as *mut u8;
             params.adv_len = BLE_ADV_PAYLOAD_LEN;
@@ -168,8 +169,7 @@ impl ble_advertising::BleAdvertisementDriver for Ble {
         res
     }
 
-    fn receive_advertisement(&self, _channel: RadioChannel) {
-    }
+    fn receive_advertisement(&self, _channel: RadioChannel) {}
 
     fn set_receive_client(&self, client: &'static ble_advertising::RxClient) {
         self.rx_client.set(Some(client));

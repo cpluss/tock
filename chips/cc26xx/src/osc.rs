@@ -3,8 +3,8 @@
 //!
 
 use aux;
-use setup::oscfh;
 use kernel::common::VolatileCell;
+use setup::oscfh;
 
 /*
     The cc26xx chips have two clock sources:
