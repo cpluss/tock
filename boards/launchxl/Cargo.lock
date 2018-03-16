@@ -1,4 +1,9 @@
 [[package]]
+name = "bitfield"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "capsules"
 version = "0.1.0"
 dependencies = [
@@ -18,7 +23,7 @@ dependencies = [
 name = "cc26xx"
 version = "0.1.0"
 dependencies = [
- "cortexm4 0.1.0",
+ "bitfield 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel 0.1.0",
 ]
 
@@ -44,3 +49,5 @@ dependencies = [
  "kernel 0.1.0",
 ]
 
+[metadata]
+"checksum bitfield 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f989ae9b9fff3271a712a309fce47f0c46dd3476cb40074ddfcc06ad4a76cf6a"
