@@ -7,12 +7,12 @@ use kernel::hil::gpio::Pin;
 
 // I2C commands
 const SINGLE_SEND: u32 = 0x7;
-const BURST_SEND_ERROR_STOP: u32 = 0x4;
-const BURST_RECEIVE_START: u32 = 0xb;
-const BURST_RECEIVE_CONT: u32 = 0x9;
 const BURST_SEND_START: u32 = 0x3;
 const BURST_SEND_CONT: u32 = 0x1;
 const BURST_SEND_FINISH: u32 = 0x5;
+const BURST_SEND_ERROR_STOP: u32 = 0x4;
+const BURST_RECEIVE_START: u32 = 0xb;
+const BURST_RECEIVE_CONT: u32 = 0x9;
 const BURST_RECEIVE_FINISH: u32 = 0x5;
 
 // Pin configuration
@@ -352,11 +352,9 @@ impl I2C {
         if !prcm::Power::is_enabled(prcm::PowerDomain::Serial) {
             return false;
         }
-
         if !prcm::Clock::i2c_run_clk_enabled() {
             return false;
         }
-
         true
     }
 
