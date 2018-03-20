@@ -1,4 +1,5 @@
 use cortexm4::{generic_isr, nvic, systick_handler, SVC_Handler};
+use setup;
 
 extern "C" {
     // Symbols defined in the linker file
@@ -19,7 +20,7 @@ unsafe extern "C" fn unhandled_interrupt() {
 }
 
 unsafe extern "C" fn hard_fault_handler() {
-    'loop0: loop {}
+    loop { }
 }
 
 #[link_section=".vectors"]
@@ -83,6 +84,8 @@ pub static BASE_VECTORS: [unsafe extern fn(); 50] = [
 
 #[no_mangle]
 pub unsafe extern "C" fn init() {
+    setup::perform();
+
     let mut current_block;
     let mut p_src: *mut u32;
     let mut p_dest: *mut u32;
@@ -127,5 +130,6 @@ pub unsafe extern "C" fn init() {
             _old
         } = 0u32;
     }
+
     nvic::enable_all();
 }

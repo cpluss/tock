@@ -11,4 +11,9 @@ extern crate kernel;
 pub mod chip;
 pub mod crt1;
 
+// Since the setup code is converted from C -> Rust, we
+// ignore side effects from the conversion (unused vars & muts).
+#[allow(unused, unused_mut)]
+mod setup;
+
 pub use crt1::init;
