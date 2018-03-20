@@ -5,9 +5,6 @@ use core::cell::Cell;
 use kernel::common::regs::{ReadOnly, ReadWrite, WriteOnly};
 use kernel::hil::gpio::Pin;
 
-pub const I2C_MCR_MFE: u32 = 0x10;
-pub const I2C_MCTRL_RUN: u32 = 0x1;
-
 // I2C commands
 const SINGLE_SEND: u32 = 0x7;
 const BURST_SEND_ERROR_STOP: u32 = 0x4;
