@@ -1,5 +1,5 @@
-use cc26xx::setup;
 use cortexm3::{generic_isr, nvic, systick_handler, SVC_Handler};
+use setup;
 
 extern "C" {
     // Symbols defined in the linker file
