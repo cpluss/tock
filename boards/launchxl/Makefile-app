@@ -7,7 +7,7 @@ $(call check_defined, PACKAGE_NAME)
 TOCK_ARCH = cortex-m4
 BOARD_BUILDDIR = $(BUILDDIR)/$(TOCK_ARCH)
 
-PROG_BASE=0x47000
+PROG_BASE=0x30000
 
 # Relative working directory, get the directory of *this*
 # specific makefile
