@@ -8,31 +8,6 @@
 use kernel::common::regs::ReadWrite;
 use kernel::hil;
 
-pub const IOC_PULL_CTL: u8 = 13;
-pub const IOC_IE: u8 = 29;
-pub const IOC_EDGE_DET: u8 = 16;
-pub const IOC_EDGE_IRQ_EN: u8 = 18;
-
-pub const IOC_IOMODE_OPEN_DRAIN_NORMAL: u32 = 0x4000000;
-pub const IOC_HYST_ENABLE: u32 = 0x40000000;
-pub const IOC_IOPULL_UP: u32 = 0x4000;
-
-pub const IOC_CURRENT_MODE: u32 = 0xC00;
-pub const IOC_DRIVE_STRENGTH: u32 = 0x300;
-
-pub enum CurrentMode {
-    Current2mA = 0x0,
-    Current4mA = 0x400,
-    Current8mA = 0x800,
-}
-
-pub enum DriveStrength {
-    Auto = 0x0,
-    Max = 0x300,
-    Med = 0x200,
-    Min = 0x100,
-}
-
 #[repr(C)]
 pub struct IocRegisters {
     iocfg: [ReadWrite<u32, IoConfiguration::Register>; 32],
