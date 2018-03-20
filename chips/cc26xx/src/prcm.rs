@@ -31,7 +31,9 @@ struct PrcmRegisters {
     pub gpio_clk_gate_sleep: ReadWrite<u32, ClockGate::Register>,
     pub gpio_clk_gate_deep_sleep: ReadWrite<u32, ClockGate::Register>,
 
-    _reserved3: [ReadOnly<u8>; 0x18],
+    pub i2c_clk_gate_run: ReadWrite<u32, ClockGate::Register>,
+    pub i2c_clk_gate_sleep: ReadWrite<u32, ClockGate::Register>,
+    pub i2c_clk_gate_deep_sleep: ReadWrite<u32, ClockGate::Register>,
 
     pub uart_clk_gate_run: ReadWrite<u32, ClockGate::Register>,
     pub uart_clk_gate_sleep: ReadWrite<u32, ClockGate::Register>,
@@ -157,4 +159,19 @@ impl Clock {
 
         prcm_commit();
     }
+
+    pub fn enable_i2c() {
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+        regs.i2c_clk_gate_run.write(ClockGate::CLK_EN::SET);
+        regs.i2c_clk_gate_sleep.write(ClockGate::CLK_EN::SET);
+        regs.i2c_clk_gate_deep_sleep.write(ClockGate::CLK_EN::SET);
+
+        prcm_commit();
+    }
+
+    pub fn i2c_run_clk_enabled() -> bool {
+        let regs: &PrcmRegisters = unsafe { &*PRCM_BASE };
+        regs.i2c_clk_gate_run.is_set(ClockGate::CLK_EN)
+    }
 }
+
