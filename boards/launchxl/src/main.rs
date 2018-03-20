@@ -14,6 +14,7 @@ extern crate kernel;
 
 use cc26xx::aon;
 use cc26xx::prcm;
+use cc26xx::radio;
 
 #[macro_use]
 pub mod io;
@@ -28,9 +29,14 @@ static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, Non
 
 #[link_section = ".app_memory"]
 // Give half of RAM to be dedicated APP memory
-static mut APP_MEMORY: [u8; 0xA000] = [0; 0xA000];
+static mut APP_MEMORY: [u8; 20480] = [0; 20480];
 
 pub struct Platform {
+    ble_radio: &'static capsules::ble_advertising_driver::BLE<
+        'static,
+        radio::ble::Ble,
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
+    >,
     gpio: &'static capsules::gpio::GPIO<'static, cc26xx::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, cc26xx::gpio::GPIOPin>,
     button: &'static capsules::button::Button<'static, cc26xx::gpio::GPIOPin>,
@@ -54,6 +60,7 @@ impl kernel::Platform for Platform {
             capsules::button::DRIVER_NUM => f(Some(self.button)),
             capsules::alarm::DRIVER_NUM => f(Some(self.alarm)),
             capsules::rng::DRIVER_NUM => f(Some(self.rng)),
+            capsules::ble_advertising_driver::DRIVER_NUM => f(Some(self.ble_radio)),
             _ => f(None),
         }
     }
@@ -193,6 +200,10 @@ pub unsafe fn reset_handler() {
         capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create())
     );
     virtual_alarm1.set_client(alarm);
+    let ble_radio_virtual_alarm = static_init!(
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
+        capsules::virtual_alarm::VirtualMuxAlarm::new(mux_alarm)
+    );
 
     let rng = static_init!(
         capsules::rng::SimpleRng<'static, cc26xx::trng::Trng>,
@@ -200,7 +211,33 @@ pub unsafe fn reset_handler() {
     );
     cc26xx::trng::TRNG.set_client(rng);
 
+    // Use BLE
+    radio::RFC.set_client(&radio::BLE);
+    let ble_radio = static_init!(
+        capsules::ble_advertising_driver::BLE<
+            'static,
+            radio::ble::Ble,
+            capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
+        >,
+        capsules::ble_advertising_driver::BLE::new(
+            &mut radio::BLE,
+            kernel::Grant::create(),
+            &mut capsules::ble_advertising_driver::BUF,
+            ble_radio_virtual_alarm
+        )
+    );
+    kernel::hil::ble_advertising::BleAdvertisementDriver::set_receive_client(
+        &radio::BLE,
+        ble_radio,
+    );
+    kernel::hil::ble_advertising::BleAdvertisementDriver::set_transmit_client(
+        &radio::BLE,
+        ble_radio,
+    );
+    ble_radio_virtual_alarm.set_client(ble_radio);
+
     let launchxl = Platform {
+        ble_radio,
         gpio,
         led,
         button,
