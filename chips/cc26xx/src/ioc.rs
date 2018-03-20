@@ -13,11 +13,6 @@ pub const IOC_IE: u8 = 29;
 pub const IOC_EDGE_DET: u8 = 16;
 pub const IOC_EDGE_IRQ_EN: u8 = 18;
 
-pub const IOC_UART0_RX_ID: u32 = 0xF;
-pub const IOC_UART0_TX_ID: u32 = 0x10;
-pub const IOC_I2C_MSSDA: u32 = 0xD;
-pub const IOC_I2C_MSSCL: u32 = 0xE;
-
 pub const IOC_IOMODE_OPEN_DRAIN_NORMAL: u32 = 0x4000000;
 pub const IOC_HYST_ENABLE: u32 = 0x40000000;
 pub const IOC_IOPULL_UP: u32 = 0x4000;
@@ -47,7 +42,15 @@ register_bitfields![
     u32,
     IoConfiguration [
         IE          OFFSET(29) NUMBITS(1) [], // Input Enable
-        IO_MODE     OFFSET(24) NUMBITS(3) [],
+        IO_MODE     OFFSET(24) NUMBITS(3) [
+            Normal = 0x0,
+            Inverted = 0x1,
+            OpenDrainNormal = 0x4,
+            OpenDrainInverted = 0x5,
+            OpenSourceNormal = 0x6,
+            OpenSourceInverted = 0x7
+
+        ],
         EDGE_IRQ_EN OFFSET(18) NUMBITS(1) [], // Interrupt enable
         EDGE_DET    OFFSET(16) NUMBITS(2) [
             None            = 0b00,
@@ -61,7 +64,9 @@ register_bitfields![
             PullNone = 0b11
         ],
         PORT_ID     OFFSET(0) NUMBITS(6) [
-            GPIO = 0x00
+            GPIO = 0x00,
+            I2C_MSSDA = 0xd,
+            I2C_MSSCL = 0xe
             // Add more as needed from datasheet p.1028
         ]
     ]
@@ -93,7 +98,10 @@ impl IocfgPin {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
         let pin_ioc = &regs.iocfg[self.pin];
 
-        pin_ioc.set(IOC_I2C_MSSDA | IOC_IOMODE_OPEN_DRAIN_NORMAL | IOC_IOPULL_UP); // This will reset previous config
+        // This will reset previous config
+        pin_ioc.write(IoConfiguration::PORT_ID::I2C_MSSDA
+            + IoConfiguration::IO_MODE::OpenDrainNormal
+            + IoConfiguration::PULL_CTL::PullUp);
         self.enable_input();
     }
 
@@ -103,7 +111,10 @@ impl IocfgPin {
         let regs: &IocRegisters = unsafe { &*IOC_BASE };
         let pin_ioc = &regs.iocfg[self.pin];
 
-        pin_ioc.set(IOC_I2C_MSSCL | IOC_IOMODE_OPEN_DRAIN_NORMAL | IOC_IOPULL_UP); // This will reset previous config
+        // This will reset previous config
+        pin_ioc.write(IoConfiguration::PORT_ID::I2C_MSSCL
+            + IoConfiguration::IO_MODE::OpenDrainNormal
+            + IoConfiguration::PULL_CTL::PullUp);
         self.enable_input();
     }
 
