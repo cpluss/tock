@@ -1,46 +1,46 @@
 use core::cell::Cell;
-use kernel::common::VolatileCell;
+use kernel::common::regs::{ReadOnly, ReadWrite};
 use prcm;
 
 #[repr(C)]
 pub struct Registers {
-    pub cfg: VolatileCell<u32>,
-    pub tamr: VolatileCell<u32>,
-    pub tbmr: VolatileCell<u32>,
-    pub ctl: VolatileCell<u32>,
-    pub sync: VolatileCell<u32>,
+    pub cfg: ReadWrite<u32>,
+    pub tamr: ReadWrite<u32>,
+    pub tbmr: ReadWrite<u32>,
+    pub ctl: ReadWrite<u32>,
+    pub sync: ReadWrite<u32>,
 
     _reserved0: [u8; 0x4],
 
-    pub imr: VolatileCell<u32>,
-    pub ris: VolatileCell<u32>,
-    pub mis: VolatileCell<u32>,
-    pub iclr: VolatileCell<u32>,
-    pub tailr: VolatileCell<u32>,
-    pub tbilr: VolatileCell<u32>,
-    pub tamatchr: VolatileCell<u32>,
-    pub tbmatchr: VolatileCell<u32>,
-    pub tapr: VolatileCell<u32>,
-    pub tbpr: VolatileCell<u32>,
-    pub tapmr: VolatileCell<u32>,
-    pub tbpmr: VolatileCell<u32>,
-    pub tar: VolatileCell<u32>,
-    pub tbr: VolatileCell<u32>,
-    pub tav: VolatileCell<u32>,
-    pub tbv: VolatileCell<u32>,
+    pub imr: ReadWrite<u32>,
+    pub ris: ReadOnly<u32>,
+    pub mis: ReadOnly<u32>,
+    pub iclr: ReadWrite<u32>,
+    pub tailr: ReadWrite<u32>,
+    pub tbilr: ReadWrite<u32>,
+    pub tamatchr: ReadWrite<u32>,
+    pub tbmatchr: ReadWrite<u32>,
+    pub tapr: ReadWrite<u32>,
+    pub tbpr: ReadWrite<u32>,
+    pub tapmr: ReadWrite<u32>,
+    pub tbpmr: ReadWrite<u32>,
+    pub tar: ReadOnly<u32>,
+    pub tbr: ReadOnly<u32>,
+    pub tav: ReadWrite<u32>,
+    pub tbv: ReadWrite<u32>,
 
     _reserved1: [u8; 0x4],
 
-    pub taps: VolatileCell<u32>,
-    pub tbps: VolatileCell<u32>,
-    pub tapv: VolatileCell<u32>,
-    pub tbpv: VolatileCell<u32>,
-    pub dmaev: VolatileCell<u32>,
+    pub taps: ReadOnly<u32>,
+    pub tbps: ReadOnly<u32>,
+    pub tapv: ReadOnly<u32>,
+    pub tbpv: ReadOnly<u32>,
+    pub dmaev: ReadWrite<u32>,
 
     _reserved2: [u8; 0xF40],
 
-    pub version: VolatileCell<u32>,
-    pub andccp: VolatileCell<u32>,
+    pub version: ReadOnly<u32>,
+    pub andccp: ReadWrite<u32>,
 }
 
 pub const GPT_CFG_32_BIT: u32 = 0x0;
