@@ -1,9 +1,7 @@
-use gpio;
 use ioc;
 use prcm;
-use core::cell::Cell;
 use kernel::common::regs::{ReadOnly, ReadWrite, WriteOnly};
-use kernel::hil::gpio::Pin;
+use kernel::hil::i2c::I2CMaster;
 
 // I2C commands
 const SINGLE_SEND: u32 = 0x7;
@@ -15,20 +13,7 @@ const BURST_RECEIVE_START: u32 = 0xb;
 const BURST_RECEIVE_CONT: u32 = 0x9;
 const BURST_RECEIVE_FINISH: u32 = 0x5;
 
-// Pin configuration
-pub const BOARD_IO_SDA: usize = 0x5;
-pub const BOARD_IO_SCL: usize = 0x6;
-pub const BOARD_IO_SDA_HP: usize = 0x8;
-pub const BOARD_IO_SCL_HP: usize = 0x9;
-
 pub const MCU_CLOCK: u32 = 48_000_000;
-
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub enum I2cInterface {
-    Interface0 = 0,
-    Interface1 = 1,
-    NoInterface = 2,
-}
 
 #[repr(C)]
 pub struct Registers {
@@ -80,41 +65,33 @@ pub static mut I2C0: I2C = I2C::new();
 
 pub struct I2C {
     regs: *mut Registers,
-    slave_addr: Cell<u8>,
-    interface: Cell<u8>,
 }
 
 impl I2C {
     pub const fn new() -> I2C {
         I2C {
             regs: I2C_BASE as *mut Registers,
-            slave_addr: Cell::new(0),
-            interface: Cell::new(I2cInterface::NoInterface as u8),
         }
+    }
+
+    pub fn init(&self, sda: u8, scl: u8) {
+        self.wakeup();
+        self.master_disable();
+        ioc::IOCFG[sda as usize].enable_i2c_sda();
+        ioc::IOCFG[scl as usize].enable_i2c_scl();
+        self.master_enable();
+        self.configure_clock(true);
     }
 
     pub fn wakeup(&self) {
         prcm::Power::enable_domain(prcm::PowerDomain::Serial);
         while !prcm::Power::is_enabled(prcm::PowerDomain::Serial) {}
         prcm::Clock::enable_i2c();
-
-        self.configure(true);
     }
 
-    #[allow(unused)]
-    pub fn shutdown(&self) {
-        // Not implemented
-    }
-
-    fn configure(&self, fast: bool) {
-        self.master_enable();
-
+    fn configure_clock(&self, fast: bool) {
         let freq;
-        if fast {
-            freq = 400_000;
-        } else {
-            freq = 100_000;
-        }
+        if fast { freq = 400_000; } else { freq = 100_000; }
 
         // Compute SCL (serial clock) period
         let tpr = ((MCU_CLOCK + (2 * 10 * freq) - 1) / (2 * 10 * freq)) - 1;
@@ -136,8 +113,8 @@ impl I2C {
         regs.mcr.modify(MasterConfiguration::MASTER_FUNCTION_ENABLE::CLEAR);
     }
 
-    pub fn write_single(&self, data: u8) -> bool {
-        self.set_master_slave_address(self.slave_addr.get(), false);
+    pub fn write_single(&self, addr: u8, data: u8) -> bool {
+        self.set_master_slave_address(addr, false);
         self.master_put_data(data);
 
         if !self.busy_wait_master_bus() {
@@ -152,8 +129,8 @@ impl I2C {
         self.status()
     }
 
-    pub fn read(&self, data: &mut [u8], len: u8) -> bool {
-        self.set_master_slave_address(self.slave_addr.get(), true);
+    pub fn read(&self, addr: u8, data: &mut [u8], len: u8) -> bool {
+        self.set_master_slave_address(addr, true);
 
         self.busy_wait_master_bus();
 
@@ -184,8 +161,8 @@ impl I2C {
         success
     }
 
-    pub fn write(&self, data: &[u8], len: u8) -> bool {
-        self.set_master_slave_address(self.slave_addr.get(), false);
+    pub fn write(&self, addr: u8, data: &[u8], len: u8) -> bool {
+        self.set_master_slave_address(addr, false);
 
         self.master_put_data(data[0]);
 
@@ -217,8 +194,8 @@ impl I2C {
         success
     }
 
-    pub fn write_read(&self, data: &mut [u8], write_len: u8, read_len: u8) -> bool {
-        self.set_master_slave_address(self.slave_addr.get(), false);
+    pub fn write_read(&self,addr: u8, data: &mut [u8], write_len: u8, read_len: u8) -> bool {
+        self.set_master_slave_address(addr, false);
 
         self.master_put_data(data[0]);
 
@@ -244,7 +221,7 @@ impl I2C {
             return false;
         }
 
-        self.set_master_slave_address(self.slave_addr.get(), true);
+        self.set_master_slave_address(addr, true);
 
         self.master_control(BURST_RECEIVE_START);
 
@@ -347,47 +324,22 @@ impl I2C {
 
         success
     }
+}
 
-    fn accessible(&self) -> bool {
-        if !prcm::Power::is_enabled(prcm::PowerDomain::Serial) {
-            return false;
-        }
-        if !prcm::Clock::i2c_run_clk_enabled() {
-            return false;
-        }
-        true
+impl I2CMaster for I2C {
+    fn enable(&self) { self.master_enable(); }
+
+    fn disable(&self) { self.master_disable(); }
+
+    fn write_read(&self, addr: u8, data: &'static mut [u8], write_len: u8, read_len: u8) {
+        self.write_read(addr, data, write_len, read_len);
     }
 
-    pub fn select(&self, new_interface: I2cInterface, addr: u8) {
-        self.slave_addr.set(addr);
+    fn write(&self, addr: u8, data: &'static mut [u8], len: u8) {
+        self.write(addr, data, len);
+    }
 
-        if !self.accessible() {
-            self.wakeup();
-        }
-
-        let interface = new_interface as u8;
-        if interface != self.interface.get() as u8 {
-            self.interface.set(interface);
-
-            self.master_disable();
-
-            if interface == I2cInterface::Interface0 as u8 {
-                unsafe {
-                    ioc::IOCFG[BOARD_IO_SDA].enable_i2c_sda();
-                    ioc::IOCFG[BOARD_IO_SCL].enable_i2c_scl();
-                    gpio::PORT[BOARD_IO_SDA_HP].make_input();
-                    gpio::PORT[BOARD_IO_SCL_HP].make_input();
-                }
-            } else if interface == I2cInterface::Interface1 as u8 {
-                unsafe {
-                    ioc::IOCFG[BOARD_IO_SDA_HP].enable_i2c_sda();
-                    ioc::IOCFG[BOARD_IO_SCL_HP].enable_i2c_scl();
-                    gpio::PORT[BOARD_IO_SDA].make_input();
-                    gpio::PORT[BOARD_IO_SCL].make_input();
-                }
-            }
-
-            self.configure(true);
-        }
+    fn read(&self, addr: u8, buffer: &'static mut [u8], len: u8) {
+        self.read(addr, buffer, len);
     }
 }
