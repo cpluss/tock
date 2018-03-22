@@ -11,9 +11,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "cc26x2"
 version = "0.1.0"
 dependencies = [
+ "cc 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc26xx 0.1.0",
  "cortexm4 0.1.0",
  "kernel 0.1.0",
@@ -51,3 +57,4 @@ dependencies = [
 
 [metadata]
 "checksum bitfield 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f989ae9b9fff3271a712a309fce47f0c46dd3476cb40074ddfcc06ad4a76cf6a"
+"checksum cc 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)" = "d9324127e719125ec8a16e6e509abc4c641e773621b50aea695af3f005656d61"

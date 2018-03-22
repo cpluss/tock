@@ -80,8 +80,21 @@ impl Oscillator {
     }
 
     pub fn configure(&self) {
-        aux::AUX_CTL.activate_clock(aux::AuxClock::OscillatorControl);
-        aux::AUX_CTL.activate_clock(aux::AuxClock::Semaphores);
+        //aux::AUX_CTL.activate_clock(aux::AuxClock::OscillatorControl);
+        //aux::AUX_CTL.activate_clock(aux::AuxClock::Semaphores);
+
+        const AUX_SYSIF_BASE: u32 = 0x400C_6000;
+
+        unsafe {
+            let current_mode = *((AUX_SYSIF_BASE + 0x00) as *mut u32);
+            let mut ack_mode: u32 = *((AUX_SYSIF_BASE + 0x04) as *mut u32);
+            while current_mode != ack_mode {
+                ack_mode = *((AUX_SYSIF_BASE + 0x04) as *mut u32);
+            }
+
+            debug_verbose!("AUX_SYSIF Current mode: {}\r", current_mode);
+            //*(AUX_SYSIF_BASE as *mut u32) = 0x01; // ACTIVE
+        }
     }
 
     #[allow(unused)]

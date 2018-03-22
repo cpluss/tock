@@ -44,6 +44,7 @@ where
 
     // Unset PRIMASK
     asm!("cpsie i" :::: "volatile");
+
     return res;
 }
 

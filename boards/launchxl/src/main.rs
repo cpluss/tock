@@ -9,7 +9,7 @@ extern crate cc26x2;
 extern crate cc26xx;
 
 #[allow(unused_imports)]
-#[macro_use(debug, debug_gpio, static_init)]
+#[macro_use]
 extern crate kernel;
 
 use cc26xx::aon;
@@ -246,6 +246,10 @@ pub unsafe fn reset_handler() {
         rng,
     };
 
+    //println!("Switching!");
+    //cc26x2::crt1::switch_to_xosc();
+    //println!("Switched!");
+
     let mut chip = cc26x2::chip::Cc26X2::new();
 
     println!("Initialization complete. Entering main loop");
@@ -261,6 +265,7 @@ pub unsafe fn reset_handler() {
         FAULT_RESPONSE,
     );
 
+    println!("Going insanely into the app!");
     kernel::main(
         &launchxl,
         &mut chip,

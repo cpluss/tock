@@ -2,8 +2,12 @@
 name = "cc26x2"
 version = "0.1.0"
 authors = ["Tock Project Developers <tock-dev@googlegroups.com>"]
+build = "build.rs"
 
 [dependencies]
 cortexm4 = { path = "../../arch/cortex-m4" }
 kernel = { path = "../../kernel" }
 cc26xx = { path = "../cc26xx" }
+
+[build-dependencies]
+cc = "1.0"
